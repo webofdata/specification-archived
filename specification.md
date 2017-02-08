@@ -1,9 +1,10 @@
 # WebOfData Specification
 
 Author  : Graham Moore  
-Contact : gramoore@outlook (dot) com  
+Contact : gramoore (at) outlook (dot) com  
 Version : 0.1  
-This Document : [Specification 0.1](http://github.com/webofdata/specification/specification.md)
+This Document : [Specification 0.1](http://github.com/webofdata/specification/specification.md)  
+Issues : <http://github.com/webofdata/specification/issues>
 
 ## Abstract
 
@@ -553,15 +554,15 @@ At subsequent intervals a client should use the stored '__next' link to determin
 
 Subject deleted markers mean that the client should remove the subject representation with that id from the dataset.
 
-## Web Data Of Data Query Protocol
+## Web Of Data Query Protocol
 
-The Web of Data Query Protocol (WOD-QP). WOD-QP is designed to facilitate the sharing and publishing of datasets, the retrieval of the representation of a given subject, and the retrieval of those subjects that reference a given subject.
+The Web of Data Query Protocol (WOD-QP). WOD-QP is designed to facilitate the retrieval of the representation of a given subject, and the retrieval of those subjects that reference, or are connected to, a given subject.
 
-The protocol is intended to work both in controlled (secure,closed networks) and open environments (on the web). It seperates the use of URIs as identifiers from the use of URLs as reference to a resolvable resource representation. It also supports and encourages clients to consume data about the same subject from one or more services.
+The protocol is intended to work both in controlled (secure,closed networks) and open environments (on the web). It seperates the use of URIs as identifiers from the use of URLs as reference to a resolvable resource representation.
 
 ### Protocol
 
-A server offering the WOD-QP is an HTTP application that exposes the following endpoints:
+A server offering the WOD-QP is a web application that exposes the following endpoints:
 
 <pre>
 GET /query?subject=&lt;uri&gt; =&gt; returns a representation of the subject.
@@ -575,7 +576,7 @@ GET /query?connected-to=&lt;uri&gt; =&gt; returns a list of subject representati
 GET /query?connected-to=&lt;uri&gt;?by=&lt;uri&gt; =&gt; returns a list of subject representations that are connected with the given subject by incoming references of the specified property name.
 </pre>
 
-<p class="ednote">Add some examples here. Add support for paging</p>
+TODO: Add some examples here. Add support for paging
 
 ### Subject Representation
 
