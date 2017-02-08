@@ -53,8 +53,7 @@ WebOfData is a web scale data sharing protocol and data representation format. I
     <li>The Data Access Protocol
     <li>The Data Sharing Protocol
     <li>The Data Management Protocol (Experimental)
-  </ul>
-</p>  
+</ul>
 
 JSON is the defacto standard for representing data on the web. However, for building a robust web of data and for semantically agreeing on what is being said, it is underpowered. 'Semantics' at the most basic level is when two or more parties can agree upon the meaning of something. In the web of data the most concrete way to do this is to publish subjects with globally unique identifiers. A subject can be anything, about which, any thing can be said. Any two parties can agree on what is being said by using the same identifiers.
 
