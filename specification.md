@@ -582,7 +582,7 @@ GET /query?connected-to=&lt;uri&gt; =&gt; returns a list of subject representati
 GET /query?connected-to=&lt;uri&gt;?by=&lt;uri&gt; =&gt; returns a list of subject representations that are connected with the given subject by incoming references of the specified property name.
 </pre>
 
-TODO: Add some examples here. Add support for paging
+TODO: Add some examples here. Add support for paging.
 
 ### Subject Representation
 
@@ -598,7 +598,7 @@ http://data.example.org/people/gra gets re-written as
 http://swdp-endpoint.example.org/query=http://data.example.org/people/gra
 </pre>
 
-## Web Data Of Data - Management Protocol
+## Web Of Data - Management Protocol
 
 This protocol defines how clients can update a WebOfData node with new datasets and the contents of those datasets. Access to these endpoints should be tightly controlled.
 
@@ -615,7 +615,7 @@ GET /datasets
 
 POST /datasets { dataset body }
 
-PUT /datasets/{dataset-id} 
+PUT /datasets/{dataset-id} { dataset body }
 
 DELETE /datasets/{dataset-id}
 
@@ -634,5 +634,5 @@ POST /datasets/{dataset-id}/subjects [ { subject-representation }, { subject-rep
 
 DELETE /datasets/{dataset-id}/subjects &lt; Clears all subjects but leaves the dataset.
 
-
+</pre>
 
