@@ -131,8 +131,8 @@ The Semantic JSON version looks like this:
 
       "education" : [ 
           { 
-            ## Contained objects can also have global identifier property
-            "__id" : http://data.example.org/people/gra"
+            ## Contained objects can also have an identifier property
+            "__id" : http://data.example.org/unis/soton",
             "name" : "southampton university"
           } 
         ]
@@ -145,14 +145,16 @@ And the concise Semantic JSON looks like this:
 <pre>
 
     {
-      ## Defintion of a context to simplify the adoption of URIs and 
-      ## improve human readability of the JSON
+      ## The defintion of a context simplifies the adoption of URIs and 
+      ## improves human readability of the JSON
       ## Also allows for easy reuse of existing JSON.
-      ## Context definition doesnt have to be colocated with every document.
-      ## They can be part of the request header or as a seperate data structure
-      ## when dealing with a list of entities.
+      ## Context definition doesn`t have to be colocated with every Semantic JSON object.
+      ## They can be part of the request header or as a seperate JSON object
+      ## when dealing with a array of Semantic JSON objects.
       "__context" : {
+        # The default instance context
         "_:"   : "http://data.example.org/people/",
+        # The defualt schema context
         "__:"  : "http://data.example.org/schema/person/",
         "skills" : "http://data.example.org/skills/"
         "universities" : "http://data.example.org/universities/"
