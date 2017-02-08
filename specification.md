@@ -58,13 +58,18 @@ WebOfData is a web scale data sharing protocol and data representation format. I
 
 JSON is the defacto standard for representing data on the web. However, for building a robust web of data and for semantically agreeing on what is being said, it is underpowered. 'Semantics' at the most basic level is when two or more parties can agree upon the meaning of something. In the web of data the most concrete way to do this is to publish subjects with globally unique identifiers. A subject can be anything, about which, any thing can be said. Any two parties can agree on what is being said by using the same identifiers.
 
+
 While efforts such as JSON-ld have tried to merge the worlds of JSON and Semantic Web technologies they have been required to bring along too much RDF data model baggage. The RDF data model is powerful but at odds with the kinds of structures used by developers and applications.
+
 
 The data representation in WebOfData is called Semantic JSON. Semantic JSON aims to provide a simple approach to unifying JSON with the use of URIs for the identity of things and the identity of property types. Using URIs for identifying subjects provides a globally unique and authorative scheme to name what we are talking about.
 
+
 As well as a syntax for representating subjects WebOfData also defines a multi-purpose protocol. The protocol can be used for navigating a global web of connected data and also for allowing clients to consume complete data sets in a scalable way.
 
+
 The protocol has been informed by two trends. The first is that SPARQL endpoints exposing data has been tried and found wanting in terms of scale and reliability. The protocol considers it's query capability as closer to the Linked Data Fragments concepts, but imposes further restrictions to create a more navigational rather than query experience. To compensate for reduced query capabilities WebOfData encourages the replication of datasets from servers to clients using the dataset sharing protocol. The data sharing protocol is a refinement of the SDShare protocol.
+
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 
