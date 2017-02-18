@@ -49,10 +49,10 @@ The data access and management protocols provide a means to manage datasets; to 
 WebOfData is a web scale data sharing protocol and data representation format. It is designed to be simple, robust and empowering. WebOfData is split into three main sections: 
 
 <ul>
-    <li>The Semantic Data Representation
-    <li>The Data Access Protocol
-    <li>The Data Sharing Protocol
-    <li>The Data Management Protocol (Experimental)
+    <li>Semantic Json Data Representation
+    <li>Data Access Protocol
+    <li>Data Sharing Protocol
+    <li>Data Management Protocol
 </ul>
 
 JSON is the defacto standard for representing data on the web. However, for building a robust web of data and for semantically agreeing on what is being said, it is underpowered. 'Semantics' at the most basic level is when two or more parties can agree upon the meaning of something. In the web of data the most concrete way to do this is to publish subjects with globally unique identifiers. A subject can be anything, about which, any thing can be said. Any two parties can agree on what is being said by using the same identifiers.
@@ -61,13 +61,13 @@ JSON is the defacto standard for representing data on the web. However, for buil
 While efforts such as JSON-ld have tried to merge the worlds of JSON and Semantic Web technologies they have been required to bring along too much RDF data model baggage. The RDF data model is powerful but at odds with the kinds of structures used by developers and applications.
 
 
-The data representation in WebOfData is called Semantic JSON. Semantic JSON aims to provide a simple approach to unifying JSON with the use of URIs for the identity of things and the identity of property types. Using URIs for identifying subjects provides a globally unique and authorative scheme to name what we are talking about.
+The data representation in the WebOfData is called Semantic JSON. Semantic JSON aims to provide a simple approach to unifying JSON with the use of URIs for the identity of things and the identity of property types. Using URIs for identifying subjects provides a globally unique and authorative scheme to name what we are talking about.
 
 
-As well as a syntax for representating subjects WebOfData also defines a multi-purpose protocol. The protocol can be used for navigating a global web of connected data and also for allowing clients to consume complete data sets in a scalable way.
+As well as a syntax for representating subjects WebOfData also defines a multi-purpose query, sync and update protocol. The protocol can be used for navigating a global web of connected data and also for allowing clients to consume complete data sets in a scalable way.
 
 
-The protocol has been informed by two trends. The first is that SPARQL endpoints exposing data has been tried and found wanting in terms of scale and reliability. The protocol considers it's query capability as closer to the Linked Data Fragments concepts, but imposes further restrictions to create a more navigational rather than query experience. To compensate for reduced query capabilities WebOfData encourages the replication of datasets from servers to clients using the dataset sharing protocol. The data sharing protocol is a refinement of the SDShare protocol.
+The protocol has been informed by two trends. The first is that SPARQL endpoints exposing data has been tried and found wanting in terms of web scale and reliability. The WebOfData protocol considers it's query capability as closer to the Linked Data Fragments concepts, but imposes further restrictions to create a more navigational rather than query experience. To compensate for reduced query capabilities WebOfData encourages the replication of datasets from servers to clients using the dataset sharing protocol. The data sharing protocol is a refinement of the SDShare protocol and OData change sets.
 
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
@@ -107,7 +107,7 @@ Here is a simple description of a person:
 To be more `semantic` (robust in our clarity of what we are talking about), we would like the following:
 
 <ul>
-<li>To unambiguously know which property is the 'identity' property for this representation.
+<li>To unambiguously know which property is the 'subject identity' property for this representation.
 <li>For the identity of the thing we are talking about to be an IRI.
 <li>For references to other concepts to be declared simply and unambiguously
 <li>For contained objects to also express their identity
@@ -118,8 +118,8 @@ The Semantic JSON version looks like this:
 <pre>
 
     {
-      ## Use of __id to denote the identity property
-      "__id"      : "http://data.example.org/people/gra",
+      ## Use of _si to denote the subject identity property
+      "_si"      : "http://data.example.org/people/gra",
 
       ## Use of full IRIs as property names
       "http://data.example.org/schema/person/age" : 23,
@@ -132,7 +132,7 @@ The Semantic JSON version looks like this:
       "education" : [ 
           { 
             ## Contained objects can also have an identifier property
-            "__id" : http://data.example.org/unis/soton",
+            "_si" : http://data.example.org/unis/soton",
             "name" : "southampton university"
           } 
         ]
@@ -160,7 +160,7 @@ And the concise Semantic JSON looks like this:
         "universities" : "http://data.example.org/universities/"
       },
 
-      "__id"      : "gra",
+      "_si"      : "gra",
 
       "age" : 23,
 
@@ -170,7 +170,7 @@ And the concise Semantic JSON looks like this:
 
       "education" : [ 
           { 
-            "__id" : "universities:soton"
+            "_si" : "universities:soton"
             "name" : "southampton university"
           } 
         ]
@@ -178,30 +178,19 @@ And the concise Semantic JSON looks like this:
 
 </pre>
 
-### Conceptual Model
-
-This specification does not dictate how and where semantic JSON is used. However, the primary use case is that a client will make a request to a server and the response will be a semantic JSON document.
-
-A semantic JSON document can be one of the following:
-
-<ul>
-  <li>A single subject representation.</li>
-  <li>An array containing zero or one context definitions followed by N subject representations</li>
-</ul> 
-
 ### Representation Rules
 
 Semantic JSON consists of a number of rules that define how JSON data must be written in order to be considered valid Semantic JSON.
 
-#### The __id Property
+#### The _si Property
 
-The '__id' property. The value of this property defines the identifier for the subject. This property MUST be present on the JSON object. The value of this property can be an IRI, or a curie. If it is neither of these two then it is interpreted in relation to the default context (see context resolution).
+The '_si' property. The value of this property defines the identifier for the subject. This property MUST be present on the JSON object. The value of this property can be an IRI, or a curie. If it is neither of these two then it is interpreted in relation to the default context (see context resolution).
 
 Examples of usage are as follows:
 
 <pre>
   {
-    "__id" : "http://data.example.org/people/gra" 
+    "_si" : "http://data.example.org/people/gra" 
     ...
   } 
 </pre>
@@ -211,7 +200,7 @@ or
 <pre>
 
   {
-    "__id" : "people:gra" 
+    "_si" : "people:gra" 
     ...
   } 
 </pre>
@@ -220,25 +209,25 @@ or
 
 <pre>
   {
-    "__id" : "gra" 
+    "_si" : "gra" 
     ...
   } 
 </pre>
 
-The __id property can also be used on any descendant object. When used on a descendant object it gives identity to that object. It does not affect or override the identity of the root object.
+The _si property can also be used on any descendant object. When used on a descendant object it gives identity to that object. It does not affect or override the identity of the root object.
 
 This provides a way to embed or contain other subjects by value and still convey that they have identity in their own right.
 
 <pre>
   {
-    "__id" : "http://data.br.no/people/gra",
+    "_si" : "http://data.br.no/people/gra",
     "education" : [
       {
-        "__id" : "http://data.schools.org/stbarts",
+        "_si" : "http://data.schools.org/stbarts",
         "name" : "st bartholomews"
       },
       {
-        "__id" : "http://data.universities.org/southampton",
+        "_si" : "http://data.universities.org/southampton",
         "name" : "Southampton University"   
       }
     ]
@@ -253,7 +242,7 @@ Subjects can reference other subjects using their subject identifier. To represe
 
 <pre>
 {
-  "__id" : "http://data.example.org/people/gra",
+  "_si" : "http://data.example.org/people/gra",
   "@lives-in" : "http://data.cities.org/oslo"
 }
 </pre>
@@ -262,7 +251,7 @@ and:
 
 <pre>
 {
-  "__id" : "http://data.example.org/people/gra",
+  "_si" : "http://data.example.org/people/gra",
   "@lives-in" : [ "http://data.cities.org/oslo", "http://data.cities.org/oxford" ]
 }
 </pre>
@@ -271,7 +260,7 @@ The use of '@' is permitted anywhere in the JSON object hierarchy. For example:
 
 <pre>
 {
-  "__id" : "http://data.example.org/people/gra",
+  "_si" : "http://data.example.org/people/gra",
   "skills" : [
     { 
       "name"      : "csharp", 
@@ -289,7 +278,7 @@ An example with properties as IRIs. Both the 'foaf:name' and 'http://data.exampl
 
 <pre>
 {
-  "__id" : "http://data.example.org/people/gra",
+  "_si" : "http://data.example.org/people/gra",
   "@http://data.example.org/vocab/lives-in" : "http://data.cities.org/oslo"
   "foaf:name" : "Graham Moore"
 }
@@ -298,7 +287,7 @@ An example with properties as IRIs. Both the 'foaf:name' and 'http://data.exampl
 
 #### Contexts
 
-All property names, '__id' property values and values of '@' properties are full URIs. However, to simplify documents and avoid repeating long URIs these values can be specified either as Curies or as simple values.
+All property names, '_si' property values and values of '@' properties are full URIs. However, to simplify documents and avoid repeating long URIs these values can be specified either as Curies or as simple values.
 
 When a Curie or simple value is used then they must be resolved against some context. A document collection or a single document can describe the context in which curies and simple values are expanded.
 
@@ -331,12 +320,12 @@ The following example shows a context definition defined as the first entity in 
     },
 
     {
-      "__id" : "...",
+      "_si" : "...",
       "foaf:name" : "bob"
     },
 
     {
-      "__id" : "..."
+      "_si" : "..."
     }
   ]
 </pre>
@@ -345,7 +334,7 @@ The context can also be defined as part of the subject representation, e.g:
 
 <pre>
   {
-    "__id" : "http://data.example.org/people/gra",
+    "_si" : "http://data.example.org/people/gra",
     "__context" : {
       "foaf" : "http://xmlns.com/foaf/0.1/" 
     },
@@ -356,7 +345,7 @@ The context can also be defined as part of the subject representation, e.g:
   Resolves to:
 
   {
-    "__id" : "http://data.example.org/people/gra",
+    "_si" : "http://data.example.org/people/gra",
     "@http://data.example.org/vocab/lives-in" : "http://data.cities.org/oslo",
     "http://xmlns.com/foaf/0.1/name" : "Graham Moore"
   }
@@ -374,7 +363,7 @@ The following example shows the use of the '__context-href' property as part of 
 
 <pre>
   {
-    "__id" : "http://data.example.org/people/gra",
+    "_si" : "http://data.example.org/people/gra",
     "__context-href" : "http://example-server.org/context/people",
     "@http://data.example.org/vocab/lives-in" : "http://data.cities.org/oslo",
     "foaf:name" : "Graham Moore"
@@ -385,7 +374,7 @@ The default namespace provides a way to prefix any property names that are not c
 
 <pre>
   {
-    "__id" : "http://data.example.org/people/gra",
+    "_si" : "http://data.example.org/people/gra",
     "__context" : {
       "__:" : "http://data.example.org/schema/"
       "foaf" : "http://data.foaf.org/schema/" 
@@ -397,7 +386,7 @@ The default namespace provides a way to prefix any property names that are not c
   Which resolves to:
 
   {
-    "__id" : "http://data.example.org/people/gra",
+    "_si" : "http://data.example.org/people/gra",
     "@http://data.example.org/vocab/lives-in" : "http://data.cities.org/oslo",
     "http://data.example.org/schema/name" : "Graham Moore"
   }
@@ -407,7 +396,7 @@ As well as a schema default we also need a instance default. So given:
 
 <pre>
   {
-    "__id" : "gra",
+    "_si" : "gra",
     "__context" : {
       "__schema-default" : "http://data.example.org/schema/"
       "__instance-default" : "http://data.example.org/people/"
@@ -420,7 +409,7 @@ As well as a schema default we also need a instance default. So given:
   Resolves to:
 
   {
-    "__id" : "http://data.example.org/people/gra",
+    "_si" : "http://data.example.org/people/gra",
     "@http://data.example.org/vocab/lives-in" : "http://data.cities.org/oslo",
     "http://data.example.org/schema/name" : "Graham Moore"
   }
@@ -438,7 +427,7 @@ If a context is defined in an array and in an object the contexts are merged wit
         },
 
         {
-        "__id" : "gra",
+        "_si" : "gra",
         "__context" : {
             "people" : "http://data.example.org/person/"  
         }
@@ -449,11 +438,44 @@ If a context is defined in an array and in an object the contexts are merged wit
 Resolves to:
 
     {
-        "__id" : "gra",
+        "_si" : "gra",
         "http://data.example.org/person/name" : "Graham Moore"   
     }
 </pre>
 </div>
+
+#### Merging Subject Representations (DRAFT)
+
+A client can (potentially) retreive a partial subject representation from many sources. In addition a service may be able to merge together several subjects that are in fact the same. In both cases it is useful to have a means to indicate the subjects that are considered to be the same, and also the rules for merging two representations.
+
+Semantic JSON introduces the 'subject identifiers' property. The property is a list of strings that when resolved against the context become a list of IRIs that indicate a set of subjects that are the same logical subject as this one. 
+
+This looks like:
+
+<pre>
+  {
+    "_si" : "A",
+    "_sids" : [ "A" , "B" ]
+  }
+</pre>
+
+The "_sids" property value is a JSON array of string values. These values are expanded against the context in the same way as the "_si" property value. The "_sids" array must contain the value of the "_si" property.  
+
+Merging of two or more subject representations can result in a new materialised representation or can appear to be a merged representation. This is up to the client to decide. These rules are defined to give some consistency to the merging process. 
+
+To merge two subject representations A and B the following algorithm should be applied:
+
+  - Order A and B based on the lexical comparison of their respective "_si" property. Let A be the lowest value and B the other. (something bit more formal maybe)
+  - Create a new empty representation C
+  - The "_si" of C can be.... (this is actually very tricky....)
+  - The "_sids" property contains the values of A "_si" property and B "_si" property.
+  - For each property in A if there is no corresponding property in B add it to C.
+  - For each property in A if there is a corresponding property in B then merge the values:
+    - If either of A or B properties are a list then they are merged by flattening them into one list: e.g. [a, b, c][d, e] becomes [a,b,c,d,e], and [ {}, [], "d"], "x" becomes: [ {}, [], "d", "x" ]
+    - For non lists values a new list is created and the values from A and B are added. e.g. {}, "x" becomes: [ {}, "x" ]
+    - Duplicates are not removed.
+  - All properties on B that are not present on A are added to C.
+
 
 #### Normal JSON Properties
 
@@ -496,7 +518,7 @@ GET /datasets/{dataset-1} => returns metadata about the dataset
 GET /datasets/dataset1 => returns metadata about the dataset
 
 {
-  "_id"            : "dataset1",
+  "name"            : "dataset1",
   "href"           : "/datasets/dataset1",
   "subjects"       : "/datasets/datasets1/subjects",
   "subjectcount"   : 3000,
@@ -528,7 +550,7 @@ The server can include deleted subject representations in the response. They loo
 <pre>
   [
     {
-      "__id" : "",
+      "_si" : "...",
       "__deleted" : true
     }
   ]
@@ -539,7 +561,6 @@ The last JSON object is always a reference to retrieve the next set of changes. 
 <pre>
 [
   ...
-
   {
     "___next" : ""
   }
@@ -558,13 +579,13 @@ The client should add the subject representations it receives into its local dat
 
 At subsequent intervals a client should use the stored '__next' link to determine if there are any changes to the dataset. If there are changes then the client should replace the current local copy of the subject representation with the one provided by the server. It should again resolve the '__next' link until there are no more subject representations. Clients are free to use their own schedule for following the '__next' link.
 
-Subject deleted markers mean that the client should remove the subject representation with that id from the dataset.
+Subject deleted markers mean that the client should remove the subject representation with the corresponding '_si' from the dataset.
 
 ## Web Of Data Query Protocol
 
-The Web of Data Query Protocol (WOD-QP). WOD-QP is designed to facilitate the retrieval of the representation of a given subject, and the retrieval of those subjects that reference, or are connected to, a given subject.
+The WebOfData Query Protocol (WOD-QP). WOD-QP is designed to facilitate the retrieval of the representation of a given subject, and the retrieval of those subjects that reference (are connected to), a given subject.
 
-The protocol is intended to work both in controlled (secure,closed networks) and open environments (on the web). It seperates the use of URIs as identifiers from the use of URLs as reference to a resolvable resource representation.
+The protocol is intended to work both in controlled (secure,closed networks) and open environments (on the web). It seperates the use of URIs as identifiers from the use of URLs as references to resolvable resource representations.
 
 ### Protocol
 
@@ -582,7 +603,7 @@ GET /query?connected-to=&lt;uri&gt; =&gt; returns a list of subject representati
 GET /query?connected-to=&lt;uri&gt;?by=&lt;uri&gt; =&gt; returns a list of subject representations that are connected with the given subject by incoming references of the specified property name.
 </pre>
 
-TODO: Add some examples here. Add support for paging.
+TODO: Add some examples here. Add support for paging. Add swagger definitions.
 
 ### Subject Representation
 
