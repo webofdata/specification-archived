@@ -446,9 +446,9 @@ Resolves to:
 
 #### Merging Subject Representations (DRAFT)
 
-A client can (potentially) retreive a partial subject representation from many sources. In addition a service may be able to merge together several subjects that are in fact the same. In both cases it is useful to have a means to indicate the subjects that are considered to be the same, and also the rules for merging two representations.
+A client can (potentially) retreive a partial subject representation from many sources. In addition a service may be able to merge together several subjects that are in fact the same. In both cases it is useful to have a means to indicate that the subjects that are considered to be the same, and also the rules for merging two representations.
 
-Semantic JSON introduces the 'subject identifiers' property. The property is a list of strings that when resolved against the context become a list of IRIs that indicate a set of subjects that are the same logical subject as this one. 
+The '_sids' property (shorthand for subject identifiers) is a list of strings that when resolved against the context become a list of IRIs that indicate a set of subjects that are the same logical subject as this one. 
 
 This looks like:
 
@@ -466,7 +466,7 @@ Merging of two or more subject representations can result in a new materialised 
 To merge two subject representations A and B the following algorithm should be applied:
 
   - Order A and B based on the lexical comparison of their respective "_si" property. Let A be the lowest value and B the other. (something bit more formal maybe)
-  - Create a new empty representation C
+  - Create a new empty representation, C.
   - The "_si" of C can be.... (this is actually very tricky....)
   - The "_sids" property contains the values of A "_si" property and B "_si" property.
   - For each property in A if there is no corresponding property in B add it to C.
@@ -589,6 +589,8 @@ The protocol is intended to work both in controlled (secure,closed networks) and
 
 ### Protocol
 
+TODO: introduce a service document with rel-types that provide a better quality REST interface.
+
 A server offering the WOD-QP is a web application that exposes the following endpoints:
 
 <pre>
@@ -604,6 +606,20 @@ GET /query?connected-to=&lt;uri&gt;?by=&lt;uri&gt; =&gt; returns a list of subje
 </pre>
 
 TODO: Add some examples here. Add support for paging. Add swagger definitions.
+
+### Namespace Extensions
+
+Semantic JSON utilises CURIES as a way to provide more consise and human readable representations. A WOD server MAY choose to use CURIEs when exposing data via the "__context" property. In the cases where CURIES are used the server can disclose the CURIE prefix expansions.
+
+A WOD server MUST expose the following endpoints:
+
+<pre>
+GET /namespaces returns a JSON object that defines all of the CURIE prefix expansions.
+
+A server MAY choose to return an empty document if it doesn't support CURIE expansion in the query requests.
+</pre>
+
+A client can use a CURIE when querying. The curie is first resolved against the publishingnamespaces and then the internal namespaces. 
 
 ### Subject Representation
 
