@@ -446,29 +446,13 @@ Resolves to:
 
 #### Merging Subject Representations (DRAFT)
 
-A client can (potentially) retreive a partial subject representation from many sources. In addition a service may be able to merge together several subjects that are in fact the same. In both cases it is useful to have a means to indicate that the subjects that are considered to be the same, and also the rules for merging two representations.
-
-The '_sids' property (shorthand for subject identifiers) is a list of strings that when resolved against the context become a list of IRIs that indicate a set of subjects that are the same logical subject as this one. 
-
-This looks like:
-
-<pre>
-  {
-    "_si" : "A",
-    "_sids" : [ "A" , "B" ]
-  }
-</pre>
-
-The "_sids" property value is a JSON array of string values. These values are expanded against the context in the same way as the "_si" property value. The "_sids" array must contain the value of the "_si" property.  
-
-Merging of two or more subject representations can result in a new materialised representation or can appear to be a merged representation. This is up to the client to decide. These rules are defined to give some consistency to the merging process. 
+A client can (potentially) retreive a partial subject representation from many WOD service endpoints. The rules for merging two representations of the same subject are as follows:
 
 To merge two subject representations A and B the following algorithm should be applied:
 
-  - Order A and B based on the lexical comparison of their respective "_si" property. Let A be the lowest value and B the other. (something bit more formal maybe)
+  - Let A and B be the two representations to be merged.
   - Create a new empty representation, C.
-  - The "_si" of C can be.... (this is actually very tricky....)
-  - The "_sids" property contains the values of A "_si" property and B "_si" property.
+  - The "_si" of C is the _si of A (or B as they are the same)
   - For each property in A if there is no corresponding property in B add it to C.
   - For each property in A if there is a corresponding property in B then merge the values:
     - If either of A or B properties are a list then they are merged by flattening them into one list: e.g. [a, b, c][d, e] becomes [a,b,c,d,e], and [ {}, [], "d"], "x" becomes: [ {}, [], "d", "x" ]
@@ -476,6 +460,7 @@ To merge two subject representations A and B the following algorithm should be a
     - Duplicates are not removed.
   - All properties on B that are not present on A are added to C.
 
+Merging of two or more subject representations can result in a new materialised representation or can appear to be a merged representation. This is up to the client to decide. These rules are defined to give some consistency to the merging process. 
 
 #### Normal JSON Properties
 
@@ -529,7 +514,7 @@ GET /datasets/dataset1 => returns metadata about the dataset
 </pre>
 
 <pre>
-GET /datasets/dataset1/subjects&amp;format=csv, json
+GET /datasets/dataset1/subjects
 </pre>
 
 When a client uses this endpoint they receive a json array that contains the subject representations in the named dataset.
@@ -670,6 +655,17 @@ DELETE /datasets/{dataset-id}/subjects?id=&lt;uri&gt;
 POST /datasets/{dataset-id}/subjects [ { subject-representation }, { subject-representation } ]
 
 DELETE /datasets/{dataset-id}/subjects &lt; Clears all subjects but leaves the dataset.
+
+</pre>
+
+We also need a SPARUL like update mechanism to allow updates to move than one dataset in a single transaction.
+
+POST /updates => txn id
+GET /updates/{txn-id}
+
+<pre>
+
+
 
 </pre>
 
