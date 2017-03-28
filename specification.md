@@ -287,7 +287,7 @@ An example with properties as IRIs. Both the 'foaf:name' and 'http://data.exampl
 
 #### Contexts
 
-All property names, '_si' property values and values of '@' properties are full URIs. However, to simplify documents and avoid repeating long URIs these values can be specified either as Curies or as simple values.
+All property names, '_si' property values, and values of '@' properties are full URIs. However, to simplify documents and avoid repeating long IRIs strings these values can be specified either as Curies or as simple values.
 
 When a Curie or simple value is used then they must be resolved against some context. A document collection or a single document can describe the context in which curies and simple values are expanded.
 
@@ -301,17 +301,17 @@ A context is declared using the special '__context' property. The value of the '
   }
 </pre> 
 
-As well as Curies a context can also contain default namespaces that are used as the postfix to simple values. There are two defaults that can be specified. A default for property names and a prefix for values.
+As well as Curies a context can also contain default namespaces that are used as the postfix to simple values. There are two defaults that can be specified. A default for property names and a deafult prefix for subject identifier values and subject reference values.
 
-There are two prefixes as often the schema vocabulary uses a different namespace to instance values.
+There are two prefixe defaults as often the schema vocabulary uses a different namespace to instance values.
 
 The default instance namespace is defined used the '_:' property, and the default property namespace is defined using the '__:' property.
 
-In an array, a context is declared with the first entity in the array being an object containing the property '___context' or '__context-href'. The href version allows the curie expansion definitions to be stored on the server.
+In an array, a context is declared with the first entity in the array being an object containing the property '__context' or '__context-href'. The href version allows the curie expansion definitions to be stored on the server.
 
 The following example shows a context definition defined as the first entity in the array.
 
-<pre>
+  <pre>
   [
     {
       "__context" : {
@@ -442,9 +442,8 @@ Resolves to:
         "http://data.example.org/person/name" : "Graham Moore"   
     }
 </pre>
-</div>
 
-#### Merging Subject Representations (DRAFT)
+#### Merging Subject Representations
 
 A client can (potentially) retreive a partial subject representation from many WOD service endpoints. The rules for merging two representations of the same subject are as follows:
 
@@ -455,22 +454,22 @@ To merge two subject representations A and B the following algorithm should be a
   - The "_si" of C is the _si of A (or B as they are the same)
   - For each property in A if there is no corresponding property in B add it to C.
   - For each property in A if there is a corresponding property in B then merge the values:
-    - If either of A or B properties are a list then they are merged by flattening them into one list: e.g. [a, b, c][d, e] becomes [a,b,c,d,e], and [ {}, [], "d"], "x" becomes: [ {}, [], "d", "x" ]
+    - If either of A or B properties are a list then they are merged by flattening them into one list: e.g. [a, b, c][d, e] becomes [a,b,c,d,e], and [ {}, [], "d"], "x" becomes: [ {}, [], "d", "x" ]. 
     - For non lists values a new list is created and the values from A and B are added. e.g. {}, "x" becomes: [ {}, "x" ]
-    - Duplicates are not removed.
+    - Duplicates are removed.
   - All properties on B that are not present on A are added to C.
 
 Merging of two or more subject representations can result in a new materialised representation or can appear to be a merged representation. This is up to the client to decide. These rules are defined to give some consistency to the merging process. 
 
 #### Normal JSON Properties
 
-Semantic JSON allows all other JSON without restriction. It is also possible to use data type encoding standards such as transit without issue.
+Semantic JSON allows all other JSON without restriction. It is also possible to use data type encoding standards such as transit, without issue.
 
 ## DataSet Sharing Protocol
 
 The DataSet Sharing Protocol (DSP) is a simple protocol to allow a client to keep a local copy of a dataset in-sync with a remote copy. It defines the set of endpoints that a DSP server MUST offer and the semantics that a compliant client MUST implement.
 
-The goal of DSP is to provide clean and simple semantics that can be implemented easily and quickly to promote the sharing of datasets. The web of data needs mechanisms that enable complete datasets to be shared easily, automatically and incrementally.
+The goal of DSP is to provide clean and simple semantics that can be implemented easily and quickly to promote the sharing of datasets. The WebOfData needs mechanisms that enable complete datasets to be shared easily, automatically and incrementally.
 
 Allowing applications to collect and download datasets incrementally allows them to run with no dependencies on remote services. This is turn allows them to provide a guarenteed quality of service to their users.
 
@@ -486,85 +485,180 @@ Allowing applications to collect and download datasets incrementally allows them
 
 ### Protocol Specification
 
-A compliant DSP server offers a number of endpoints that expose the datasets that the server is hosting. For each of these datasets there are additional endpoints:
+A compliant DSP server exposes a single endpoint that MUST serve a service description document. This document contains typed links. The type of each link is described below. These typed links form a hypertext that can be processed by a compliant client. It is important that clients follow the semantics and link types and do not craft URIs by hand.
+
+#### The Service Document Endpoint
+
+This specification does not define the root URI for the document, but would recommend that a WOD server would expose:
 
 <pre>
-GET /datasets => a list of datasets.
+  /dsp 
+</pre>
 
-A JSON document with the following structure:
+Such as:
 
-[
-  { "dataset" : "dataset1", "href" : "datasets/dataset1" },
-  { "dataset" : "dataset2", "href" : "datasets/dataset2" }
-]
+<pre>
+  https://api.webofdata.io/dsp 
+</pre>
 
-GET /datasets/{dataset-1} => returns metadata about the dataset
+The service document has the following structure:
 
-GET /datasets/dataset1 => returns metadata about the dataset
-
+<pre>
 {
-  "name"            : "dataset1",
-  "href"           : "/datasets/dataset1",
-  "subjects"       : "/datasets/datasets1/subjects",
-  "subjectcount"   : 3000,
-  "lastmodified"   : "2016-12-01T00:00:00Z",
-  "formats"        : ["json", "csv"]
+  "title" : "this web of data data sync protocol",
+  "datasets_href" : "datasets"
 }
-
 </pre>
+
+The document contains a single JSON Object with the following structure:
+
+<dl>
+  <dt>title (REQUIRED)
+  <dd>A label for this WebOfData data sync endpoint.</dd>
+
+  <dt>datasets_href (REQUIRED)
+  <dd>A relative or absolute URI that accepts HTTP GET and returns a resource of type `dataset-list`</dd>
+</dl>
+
+#### Dataset List Resource Type
+
+A resource of the type `dataset-list` has the following representation and semantics.
 
 <pre>
-GET /datasets/dataset1/subjects
+[
+  { 
+    "subjectidentifier"  : "http://data.webofdata.io/datasets/dataset1",
+    "name"               : "products dataset", 
+    "href"               : "datasets/dataset1", 
+  },
+  { 
+    "subjectidentifier"  : "http://data.webofdata.io/datasets/dataset2",
+    "name"               : "people dataset", 
+    "href"               : "datasets/dataset2", 
+  }
+]
 </pre>
 
-When a client uses this endpoint they receive a json array that contains the subject representations in the named dataset.
+The document contains a list of JSON Objects where each has the following structure:
 
-As part of the JSON response the first JSON object gives metadata about what data is going to be returned. The only property that has significant semantic meaning is the type value. 'Incremental' implies that the subject representations in the list can replace the subject representation the client already has stored. 'all' indicates that all the data the client has should be deleted and replaced with the subject representations provided. e.g.:
+<dl>
+  <dt>subjectidentifier (REQUIRED)
+  <dd>The id for the dataset</dd>
+
+  <dt>name (REQUIRED)
+  <dd>A label for this dataset.</dd>
+
+  <dt>href (REQUIRED)
+  <dd>A relative or absolute URI that returns a resource of type `dataset-info`.</dd>
+</dl>
+
+#### Dataset Info Resource Type
+
+A resource of the type `dataset-info` has the following representation and semantics.
 
 <pre>
-  [
-    {
-      "id" : "request-id",
-      "href" : "request-url",
-      "type" : "incremental | all"
-    },
+{
+  "subjectidentifier"  : "http://data.webofdata.io/datasets/dataset1",
+  "name"               : "dataset1",
+  "subjects_href"      : "subjects",
+  "subjectcount"       : 3000,
+  "lastmodified"       : "2016-12-01T00:00:00Z"
+}
 </pre>
+
+The document contains a single JSON Object with the following structure:
+
+<dl>
+  <dt>subjectidentifier (REQUIRED)
+  <dd>The id for the dataset</dd>
+
+  <dt>name (REQUIRED)
+  <dd>A label for this dataset.</dd>
+
+  <dt>subjects_href (REQUIRED)
+  <dd>A relative or absolute URI that returns a resource of type `modified-subjects-list`.</dd>
+</dl>
+
+#### Modified Subjects List Resource Type
+
+The resource type `modified-subjects-list` is an feed of subject representations that are ordered by when they were created, modified, or deleted.
+
+A resource of the type `modified-subjects-list` has the following representation, headers and semantics.
+
+When fetching a resource of this type the following HTTP headers are applicable: 
+
+##### X-WOD-DSP-FEED-TYPE
+
+The response MUST include a `X-WOD-DSP-FEED-TYPE` header. The header can have one of the following values:
+
+  - incremental
+
+    Meaning that the set of subjects in the list can replace the subject representations the client already has stored.
+
+  - full
+
+    Meaning that the client should delete all local data and replace it with what it receives. 
+
+##### X-WOD-DSP-NEXT-PAGE
+
+The `X-WOD-DSP-NEXT-PAGE` header MUST contain a URI that will return a resource of type `modified-subjects-list`.
+
+This header is used to provide paging when the dataset being synchronised is large. The server is free to choose the page size.
+
+##### X-WOD-DSP-NEXT-DATA
+
+The `X-WOD-DSP-NEXT-DATA` header MUST contain a URI that will return a resource of type `modified-subjects-list`.
+
+This header is used to provide the client with a link that will provide the next collection of updates. The server can use this to provide paging and a way to fetch future changes.
+
+
+### Deleted Subject Representations
 
 The server can include deleted subject representations in the response. They look like:
 
 <pre>
   [
+    ...
     {
-      "_si" : "...",
-      "__deleted" : true
+      "_si"      : "...",
+      "_deleted" : true
     }
+    ...
   ]
 </pre>
 
-The last JSON object is always a reference to retrieve the next set of changes. It is expected that a client continues to call this until no more subjects are returned.
-
-<pre>
-[
-  ...
-  {
-    "___next" : ""
-  }
-]
-</pre>
-
-</div>
+The "_si" property and the "_deleted" property MUST be included. The server MAY provide the rest of the subject representation.
 
 ### Client Semantics
 
 A client is assumed to be storing, and keeping in sync, a local copy of a remote dataset. The remote dataset is exposed using the data sharing protocol.
 
-If the client has an empty local dataset and wants to fetch all the data from the remote dataset then it should call to the subjects endpoint and follow all '__next' references until the response contains 0 subject representations. The client should store the last '__next' link it received.
+If the client has an empty local dataset and wants to fetch all the data from the remote dataset then it should call to the subjects endpoint and follow the URL value contained in the `X-WOD-DSP-NEXT-DATA` header until the response contains 0 subject representations. 
 
-The client should add the subject representations it receives into its local dataset. Each subject has a unique identifier in the context of the dataset.
+The client should then store the last `X-WOD-DSP-NEXT-DATA` header value link it received.
 
-At subsequent intervals a client should use the stored '__next' link to determine if there are any changes to the dataset. If there are changes then the client should replace the current local copy of the subject representation with the one provided by the server. It should again resolve the '__next' link until there are no more subject representations. Clients are free to use their own schedule for following the '__next' link.
+The client should add the subject representations it receives into its local dataset. 
 
-Subject deleted markers mean that the client should remove the subject representation with the corresponding '_si' from the dataset.
+At subsequent intervals a client should use the stored `X-WOD-DSP-NEXT-DATA` link to determine if there are any changes to the dataset. If there are changes then the client should replace the current local copy of the subject representation with the one provided by the server. It should again resolve the `X-WOD-DSP-NEXT-DATA` link until there are no more subject representations. Clients are free to use their own schedule for following the `X-WOD-DSP-NEXT-DATA` link.
+
+When a client recieves the `X-WOD-DSP-FEED-TYPE` header and it has a value of `full` then the client MUST delete all content from the local dataset and replace it with what comes from the server.
+
+Subjects with the property "_deleted" with a value of "true" mean that the client should remove the subject representation with the corresponding '_si' from the local dataset.
+
+A client is free to identify and name the local dataset. 
+
+<!--
+#### WebSocket Semantics
+
+As well as the HTTP semantics described above the following websocket variant is also described. This variant is designed to support real time push of subject changes. 
+
+
+
+
+#### Low Level Socket Semantics
+
+As well as the HTTP semantics described above the following websocker variant is also described. This variant is designed to support real time push of subject changes. 
+-->
 
 ## Web Of Data Query Protocol
 
