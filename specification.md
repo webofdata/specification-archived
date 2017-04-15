@@ -609,8 +609,7 @@ This header is used to provide paging when the dataset being synchronised is lar
 
 The `X-WOD-DSP-NEXT-DATA` header MUST contain a URI that will return a resource of type `modified-subjects-list`.
 
-This header is used to provide the client with a link that will provide the next collection of updates. The server can use this to provide paging and a way to fetch future changes.
-
+This header is used to provide the client with a link that will provide the next collection of updates.
 
 ### Deleted Subject Representations
 
@@ -627,7 +626,7 @@ The server can include deleted subject representations in the response. They loo
   ]
 </pre>
 
-The "_si" property and the "_deleted" property MUST be included. The server MAY provide the rest of the subject representation.
+The "_si" property and the "_deleted" property MUST be included. The server MAY provide the rest of the deleted subject representation.
 
 ### Client Semantics
 
