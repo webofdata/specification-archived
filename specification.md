@@ -46,7 +46,7 @@ The data access and management protocols provide a means to manage datasets; to 
 
 ## Introduction
 
-WebOfData is a web scale data sharing protocol and data representation format. It is designed to be simple, robust and empowering. WebOfData is split into three main sections: 
+WebOfData is a web scale data sharing protocol and data representation format. It is designed to be simple, robust and empowering. WebOfData is split into four main sections: 
 
 <ul>
     <li>Semantic Json Data Representation
@@ -64,7 +64,7 @@ While efforts such as JSON-ld have tried to merge the worlds of JSON and Semanti
 The data representation in the WebOfData is called Semantic JSON. Semantic JSON aims to provide a simple approach to unifying JSON with the use of URIs for the identity of things and the identity of property types. Using URIs for identifying subjects provides a globally unique and authorative scheme to name what we are talking about.
 
 
-As well as a syntax for representating subjects WebOfData also defines a multi-purpose query, sync and update protocol. The protocol can be used for navigating a global web of connected data and also for allowing clients to consume complete data sets in a scalable way.
+As well as a syntax for representating subjects WebOfData also defines a multi-purpose query, synchronisation and update protocol. The protocol can be used for navigating a global web of connected data and also for allowing clients to consume complete data sets in a scalable way.
 
 
 The protocol has been informed by two trends. The first is that SPARQL endpoints exposing data has been tried and found wanting in terms of web scale and reliability. The WebOfData protocol considers it's query capability as closer to the Linked Data Fragments concepts, but imposes further restrictions to create a more navigational rather than query experience. To compensate for reduced query capabilities WebOfData encourages the replication of datasets from servers to clients using the dataset sharing protocol. The data sharing protocol is a refinement of the SDShare protocol and OData change sets.
@@ -301,9 +301,9 @@ A context is declared using the special '__context' property. The value of the '
   }
 </pre> 
 
-As well as Curies a context can also contain default namespaces that are used as the postfix to simple values. There are two defaults that can be specified. A default for property names and a deafult prefix for subject identifier values and subject reference values.
+As well as Curies a context can also contain default namespaces that are used as the prefix to simple values. There are two defaults that can be specified. A default for property names and a default prefix for subject identifier values and subject reference values.
 
-There are two prefixe defaults as often the schema vocabulary uses a different namespace to instance values.
+There are two prefix defaults as the schema vocabulary often uses a different namespace to instance values.
 
 The default instance namespace is defined used the '_:' property, and the default property namespace is defined using the '__:' property.
 
@@ -589,13 +589,13 @@ When fetching a resource of this type the following HTTP headers are applicable:
 
 ##### X-WOD-DSP-FEED-TYPE
 
-The response MUST include a `X-WOD-DSP-FEED-TYPE` header. The header can have one of the following values:
+The response can include a `X-WOD-DSP-DATASET-RESET` header. The header can have one of the following values:
 
-  - incremental
+  - false (default)
 
     Meaning that the set of subjects in the list can replace the subject representations the client already has stored.
 
-  - full
+  - true
 
     Meaning that the client should delete all local data and replace it with what it receives. 
 
@@ -632,15 +632,17 @@ The "_si" property and the "_deleted" property MUST be included. The server MAY 
 
 A client is assumed to be storing, and keeping in sync, a local copy of a remote dataset. The remote dataset is exposed using the data sharing protocol.
 
-If the client has an empty local dataset and wants to fetch all the data from the remote dataset then it should call to the subjects endpoint and follow the URL value contained in the `X-WOD-DSP-NEXT-DATA` header until the response contains 0 subject representations. 
+If the client has an empty local dataset and wants to fetch all the data from the remote dataset then it should call to the subjects endpoint and follow the URL value contained in the `X-WOD-DSP-NEXT-PAGE` header until there are no more headers of this type contained in the reponse. 
 
-The client should then store the last `X-WOD-DSP-NEXT-DATA` header value link it received.
+As the client processes each page of subjects it should add the subject representations it receives into its local dataset. 
 
-The client should add the subject representations it receives into its local dataset. 
+The client is free to store the value of the `X-WOD-DSP-NEXT-DATA` header value link it at any point, but it MUST store it after processing the last page.
 
-At subsequent intervals a client should use the stored `X-WOD-DSP-NEXT-DATA` link to determine if there are any changes to the dataset. If there are changes then the client should replace the current local copy of the subject representation with the one provided by the server. It should again resolve the `X-WOD-DSP-NEXT-DATA` link until there are no more subject representations. Clients are free to use their own schedule for following the `X-WOD-DSP-NEXT-DATA` link.
+At subsequent intervals a client should use the stored `X-WOD-DSP-NEXT-DATA` link to determine if there are any changes to the dataset. If there are changes then the client should replace the current local copy of the subject representation with the one provided by the server. It should again resolve the `X-WOD-DSP-NEXT-PAGE` link until there are no more subject representations. 
 
-When a client recieves the `X-WOD-DSP-FEED-TYPE` header and it has a value of `full` then the client MUST delete all content from the local dataset and replace it with what comes from the server.
+Clients are free to use their own schedule for following the `X-WOD-DSP-NEXT-DATA` link.
+
+When a client recieves the `X-WOD-DSP-DATASET-RESET` header and it has a value of `true` then the client MUST delete all content from the local dataset and replace it with what comes from the server.
 
 Subjects with the property "_deleted" with a value of "true" mean that the client should remove the subject representation with the corresponding '_si' from the local dataset.
 
@@ -649,14 +651,24 @@ A client is free to identify and name the local dataset.
 <!--
 #### WebSocket Semantics
 
-As well as the HTTP semantics described above the following websocket variant is also described. This variant is designed to support real time push of subject changes. 
+As well as the HTTP semantics described above the following websocket variant is also described. This variant is designed to better support real time push of subject changes. 
+
+The WebSocket variant of the protocol sees a client connect to a websocket endpoint provided by the server. Something like:
+
+<pre>
+https://api.webofdata.io/dsp-socket
+</pre>
 
 
 
+If the connection is broken then a client can reconnect using the 
 
-#### Low Level Socket Semantics
+This should be considered a long lived connection
 
-As well as the HTTP semantics described above the following websocker variant is also described. This variant is designed to support real time push of subject changes. 
+#### GRPC Semantics
+
+As well as the HTTP semantics described above the following tcp socker variant is also described. This variant is designed to support real time push of subject changes. 
+
 -->
 
 ## Web Of Data Query Protocol
@@ -697,7 +709,7 @@ GET /namespaces returns a JSON object that defines all of the CURIE prefix expan
 A server MAY choose to return an empty document if it doesn't support CURIE expansion in the query requests.
 </pre>
 
-A client can use a CURIE when querying. The curie is first resolved against the publishingnamespaces and then the internal namespaces. 
+A client can use a CURIE when querying. The curie is first resolved against the publishing namespaces and then the internal namespaces. 
 
 ### Subject Representation
 
@@ -708,9 +720,9 @@ All data returned follows the Semantic JSON format. The mime type application/js
 Follow-your-nose semantics works by a web endpoint capturing requests for subject representations and re-writing and re-routing them to the WOD-QP server. e.g:
 
 <pre>
-http://data.example.org/people/gra gets re-written as 
+http://data.webofdata.io/people/gra gets re-written as 
 
-http://swdp-endpoint.example.org/query=http://data.example.org/people/gra
+http://api.webofdata.io/query?connected=http://data.webofdata.io/people/gra
 </pre>
 
 ## Web Of Data - Management Protocol
