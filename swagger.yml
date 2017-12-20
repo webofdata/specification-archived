@@ -1,0 +1,390 @@
+swagger: "2.0"
+info:
+  description: "The protocol specification for a web of data node. The [https://webofdata.org/specification.html](Specification) defines a data model, serialisation format and protocol for managing and sharing data at web scale."
+  version: "1.0.0"
+  title: "Web Of Data - Protocol"
+tags:
+- name: "Synchronisation"
+- name: "Management"
+- name: "Query"
+schemes:
+- "https"
+paths:
+
+  /stores:
+    post:
+      tags:
+        - "Management"
+      summary: Create a new store
+      description: "Creates a new store with the name provided iff this name is not already taken. If no name is provided then the server MUST generate one"
+      operationId: "create-store"
+      produces:
+        - "application/json"
+      parameters:
+      - name: "body"
+        in: "body"
+        description: "Store to create"
+        required: true
+        schema:
+          $ref: "#/definitions/Store"
+      responses:
+        201:
+          description: "successful operation - store created"
+          schema:
+            $ref: "#/definitions/Entity"
+        400:
+          description: "Occurs when the store passed in the body is invalid or missing"
+
+    get:
+      tags:
+        - "Management"
+      summary: Returns a list of stores
+      description: "returns a list of stores"
+      operationId: "get-stores"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "id"
+          in: "query"
+          description: "if present tries to find the store with that id (note: not the store name)"
+          required: false
+          type: string
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Store"
+
+  /stores/{store-name}:
+    get:
+      tags:
+        - "Management"
+      summary: get store by its unique name
+      description: returns a single store object or 404 not found
+      operationId: get-store
+      produces:
+        - "application/json"
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+
+    delete:
+      tags:
+        - "Management"
+      summary: delete the names store, and all datasets
+      description: deletes a the store or returns a 400 bad request if no store of the name provided exists
+      operationId: delete-store
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+
+    put:
+      tags:
+        - "Management"
+      summary: updates the store entity
+      description: updates the metadata entity that represents the store
+      operationId: update-store
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+        - name: "body"
+          in: "body"
+          description: "New representation of store metadata"
+          required: true
+          schema:
+            $ref: "#/definitions/Store"
+
+  /stores/{store-name}/query:
+    get:
+      tags:
+        - "Query"
+      summary: queries across the datasets of the store using the query parameters provided.
+      operationId: query-store
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+        - name: "subject"
+          in: "query"
+          required: false
+          type: "string"
+
+  /stores/{store-name}/namespaces:
+    get:
+      tags:
+        - "Management"
+      summary: Returns an object that contains prefixes and namespace expansions used in this store.
+      operationId: get-namespaces
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+
+  /stores/{store-name}/transactions:
+    post:
+      tags:
+        - "Management"
+      summary: Atomically updates entities across one or more datasets.
+      operationId: query-store
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+        - name: "body"
+          in: "body"
+          description: "Transaction data"
+          required: true
+          schema:
+            $ref: "#/definitions/Transaction"
+    get:
+      tags:
+        - "Management"
+      summary: returns a list of transactions
+      operationId: get-transactions
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+        - name: "status"
+          in: "query"
+          description: "one of running, queued, completed"
+          type: "string"
+      responses:
+        200:
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/TransactionInfo"
+
+  /stores/{store-name}/datasets:
+    get:
+      tags:
+        - "Management"
+      summary: gets a list of datasets in the named store
+      description: returns a single store object or 404 if the store does not exist
+      operationId: get-datasets
+      produces:
+        - "application/json"
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Dataset"
+        400:
+          description: "Invalid store name"
+
+    post:
+      tags:
+        - "Management"
+      summary: Create a new dataset
+      description: "Creates a new dataset with the name provided iff this name is not already taken. If no name is provided the server MUST generate one."
+      operationId: "create-dataset"
+      produces:
+        - "application/json"
+      parameters:
+      - name: "body"
+        in: "body"
+        description: "Dataset to create"
+        required: true
+        schema:
+          $ref: "#/definitions/Dataset"
+      responses:
+        201:
+          description: "successful operation - dataset created"
+          schema:
+            $ref: "#/definitions/Dataset"
+        400:
+          description: "Occurs when the dataset passed in the body is invalid or missing"
+
+  /stores/{store-name}/datasets/{dataset-name}/entities:
+    get:
+      tags:
+        - "Management"
+      summary: "Get entities in the dataset"
+      description: "Returns the entities in the specified dataset. Can also be used to locate a specific entity using the id query parameter."
+      operationId: "get-entities"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "unique store name for this service endpoint"
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "unique store name for this service endpoint"
+        required: true
+        type: "string"
+      - name: "id"
+        in: "query"
+        description: "If provided it must be either a full uri or curie and it will limit the number of entities to either 0 or 1, depending if an entity with that id exists in the dataset"
+      responses:
+        200:
+          description: "successful operation"
+          headers:
+            x-wod-next-page:
+              description: "if present indicates to the client that there is more data to be retreived using the link in the value"
+              type: "string"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Entity"
+
+    post:
+      tags:
+        - "Management"
+      summary: "Add or replace entities in the dataset"
+      description: "Adds or replaces all the entities in the specified dataset with those provided in the body."
+      operationId: "store-entities"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "unique store name for this service endpoint"
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "unique store name for this service endpoint"
+        required: true
+        type: "string"
+      - name: "body"
+        schema:
+          type: "array"
+          items:
+            $ref: "#/definitions/Entity"
+      responses:
+        200:
+          description: "successful operation"
+
+  /stores/{store-name}/datasets/{dataset-id}/changes:
+    get:
+      tags:
+        - "Synchronisation"
+      summary: "Get dataset changes"
+      description: "Returns all the changes in the specified dataset. Use of the since parameter restricts the set of values returned."
+      operationId: "get-changes"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "since"
+        in: "query"
+        description: "A token that the service interprets in order to only return changes that have occurred since that point."
+        required: false
+        type: "string"
+      responses:
+        200:
+          description: "successful operation"
+          headers:
+            x-wod-full-sync:
+              description: if present indicates that a full sync is required. This means that all local data should be deleted and the new data arriving put in its place.
+              type: string
+            x-wod-next-page:
+              description: if present indicates to the client that there is more data to be retreived
+              type: string
+            x-wod-next-request:
+              description: if present it is the url that should be used the next time the client wishes to retrieve changes.
+              type: string
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Entity"
+        400:
+          description: "Invalid since token"
+
+definitions:
+
+  Store:
+    type: "object"
+    properties:
+      "name":
+        "type": "string"
+      "entity":
+        "$ref": "#/definitions/Entity"
+
+  Dataset:
+    type: "object"
+    properties:
+      "name":
+        "type": "string"
+      "entity":
+        "$ref": "#/definitions/Entity"
+
+  Entity:
+    type: "object"
+    properties:
+      "@id":
+        type: "string"
+      "@deleted":
+        type: "boolean"
+        default: false
+      "@context":
+        "$ref": "#/definitions/Context"
+      "@etag":
+        type: "string"
+
+  Context:
+    type: "object"
+    properties:
+      namespaces:
+        type: "object"
+      datatypes:
+        type: "object"
+
+  Transaction:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+      operations:
+        type: array
+        items:
+          $ref: "#/definitions/TransactionOperation"
+
+  TransactionOperation:
+    type: "object"
+    properties:
+      dataset:
+        type: "string"
+        description: "The name of the dataset to update entities in"
+      body:
+        type: array
+        items:
+          $ref: "#/definitions/Entity"
+
+  TransactionInfo:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+      status:
+        type: "string"
