@@ -4,37 +4,14 @@ info:
   version: "1.0.0"
   title: "Web Of Data - Protocol"
 tags:
-- name: "Synchronisation"
 - name: "Management"
+- name: "Synchronisation"
 - name: "Query"
 schemes:
 - "https"
 paths:
 
   /stores:
-    post:
-      tags:
-        - "Management"
-      summary: Create a new store
-      description: "Creates a new store with the name provided iff this name is not already taken. If no name is provided then the server MUST generate one"
-      operationId: "create-store"
-      produces:
-        - "application/json"
-      parameters:
-      - name: "body"
-        in: "body"
-        description: "Store to create"
-        required: true
-        schema:
-          $ref: "#/definitions/Store"
-      responses:
-        201:
-          description: "successful operation - store created"
-          schema:
-            $ref: "#/definitions/Entity"
-        400:
-          description: "Occurs when the store passed in the body is invalid or missing"
-
     get:
       tags:
         - "Management"
@@ -56,12 +33,34 @@ paths:
             type: "array"
             items:
               $ref: "#/definitions/Store"
+    post:
+      tags:
+        - "Management"
+      summary: Create a new store
+      description: "Creates a new store with the name provided iff this name is not already taken. If no name is provided then the server MUST generate one"
+      operationId: "create-store"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "body"
+          in: "body"
+          description: "Store to create"
+          required: true
+          schema:
+            $ref: "#/definitions/Store"
+      responses:
+        201:
+          description: "successful operation - store created"
+          schema:
+            $ref: "#/definitions/Entity"
+        400:
+          description: "Occurs when the store passed in the body is invalid or missing"
 
   /stores/{store-name}:
     get:
       tags:
         - "Management"
-      summary: get store by its unique name
+      summary: get store by its local store name
       description: returns a single store object or 404 not found
       operationId: get-store
       produces:
@@ -72,36 +71,49 @@ paths:
           description: "unique store name for this service endpoint"
           required: true
           type: "string"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/Store"
 
     delete:
       tags:
         - "Management"
-      summary: delete the names store, and all datasets
+      summary: delete the named store, and all datasets
       description: deletes a the store or returns a 400 bad request if no store of the name provided exists
       operationId: delete-store
       parameters:
         - name: "store-name"
           in: "path"
-          description: "unique store name for this service endpoint"
+          description: "store name"
           required: true
           type: "string"
+      responses:
+        200:
+          description: "successful operation"
 
     put:
       tags:
         - "Management"
       summary: updates the store entity
-      description: updates the metadata entity that represents the store
+      description: updates the entity that represents the store
       operationId: update-store
       parameters:
         - name: "store-name"
           in: "path"
-          description: "unique store name for this service endpoint"
+          description: "store name"
           required: true
           type: "string"
         - name: "body"
           in: "body"
-          description: "New representation of store metadata"
+          description: "New representation of the store entity"
           required: true
+          schema:
+            $ref: "#/definitions/Store"
+      responses:
+        200:
+          description: "successful operation"
           schema:
             $ref: "#/definitions/Store"
 
@@ -121,6 +133,9 @@ paths:
           in: "query"
           required: false
           type: "string"
+      responses:
+        200:
+          description: "succesful operation"
 
   /stores/{store-name}/namespaces:
     get:
@@ -134,13 +149,17 @@ paths:
           description: "unique store name for this service endpoint"
           required: true
           type: "string"
+      responses:
+        200:
+          description: "succesful operation"
+
 
   /stores/{store-name}/transactions:
     post:
       tags:
         - "Management"
       summary: Atomically updates entities across one or more datasets.
-      operationId: query-store
+      operationId: create-transaction
       parameters:
         - name: "store-name"
           in: "path"
@@ -153,6 +172,10 @@ paths:
           required: true
           schema:
             $ref: "#/definitions/Transaction"
+      responses:
+        200:
+          description: "succesful operation"
+
     get:
       tags:
         - "Management"
@@ -170,6 +193,7 @@ paths:
           type: "string"
       responses:
         200:
+          description: "successful operation"
           schema:
             type: "array"
             items:
@@ -179,9 +203,9 @@ paths:
     get:
       tags:
         - "Management"
-      summary: gets a list of datasets in the named store
-      description: returns a single store object or 404 if the store does not exist
-      operationId: get-datasets
+      summary: "gets a list of datasets in the named store"
+      description: "returns a single store object or 404 if the store does not exist"
+      operationId: "get-datasets"
       produces:
         - "application/json"
       parameters:
@@ -209,12 +233,17 @@ paths:
       produces:
         - "application/json"
       parameters:
-      - name: "body"
-        in: "body"
-        description: "Dataset to create"
-        required: true
-        schema:
-          $ref: "#/definitions/Dataset"
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+        - name: "body"
+          in: "body"
+          description: "Dataset to create"
+          required: true
+          schema:
+            $ref: "#/definitions/Dataset"
       responses:
         201:
           description: "successful operation - dataset created"
@@ -222,6 +251,119 @@ paths:
             $ref: "#/definitions/Dataset"
         400:
           description: "Occurs when the dataset passed in the body is invalid or missing"
+
+  /stores/{store-name}/datasets/{dataset-name}:
+    get:
+      tags:
+        - "Management"
+      summary: "gets a list of datasets in the named store"
+      description: "returns a single store object or 404 if the store does not exist"
+      operationId: "get-dataset"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "store name"
+          required: true
+          type: "string"
+        - name: "dataset-name"
+          in: "path"
+          description: "dataset name"
+          required: true
+          type: "string"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/Dataset"
+        404:
+          description: "Invalid store name or dataset name"
+
+    put:
+      tags:
+        - "Management"
+      summary: Update dataset
+      description: "Update the entity for the dataset"
+      operationId: "update-dataset"
+      produces:
+        - "application/json"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "store name"
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "dataset name"
+        required: true
+        type: "string"
+      - name: "body"
+        in: "body"
+        description: "New dataset entity data"
+        required: true
+        schema:
+          $ref: "#/definitions/Dataset"
+      responses:
+        200:
+          description: "successful operation - dataset updated"
+          schema:
+            $ref: "#/definitions/Dataset"
+        400:
+          description: "Occurs when the dataset passed in the body is invalid or missing"
+
+    delete:
+      tags:
+        - "Management"
+      summary: Delete dataset
+      description: "Delete the dataset"
+      operationId: "delete-dataset"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "store name"
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "dataset name"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "successful operation - dataset deleted"
+
+  /stores/{store-name}/datasets/{dataset-name}/entities/partitions:
+    get:
+      tags:
+        - "Management"
+      summary: "Get partitions for reading the dataset in parallel"
+      description: "Returns a resource that provides links to read the dataset in parallel. Each provided returns entity arrays in the same way that a call to get-entities does."
+      operationId: "get-partitions"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "store name"
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "dataset name"
+        required: true
+        type: "string"
+      - name: "partitions"
+        in: "query"
+        type: "string"
+        description: "If provided it indicates to the server the desired number of partitions. The server is free to decided the partition count."
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/EntityPartitions"
+
 
   /stores/{store-name}/datasets/{dataset-name}/entities:
     get:
@@ -231,27 +373,28 @@ paths:
       description: "Returns the entities in the specified dataset. Can also be used to locate a specific entity using the id query parameter."
       operationId: "get-entities"
       produces:
-      - "application/json"
+        - "application/json"
       parameters:
-      - name: "store-name"
-        in: "path"
-        description: "unique store name for this service endpoint"
-        required: true
-        type: "string"
-      - name: "dataset-name"
-        in: "path"
-        description: "unique store name for this service endpoint"
-        required: true
-        type: "string"
-      - name: "id"
-        in: "query"
-        description: "If provided it must be either a full uri or curie and it will limit the number of entities to either 0 or 1, depending if an entity with that id exists in the dataset"
+        - name: "store-name"
+          in: "path"
+          description: "store name"
+          required: true
+          type: "string"
+        - name: "dataset-name"
+          in: "path"
+          description: "dataset name"
+          required: true
+          type: "string"
+        - name: "id"
+          in: "query"
+          type: "string"
+          description: "If provided it must be either a full uri or curie and it will limit the number of entities to either 0 or 1, depending if an entity with that id exists in the dataset"
       responses:
         200:
           description: "successful operation"
           headers:
             x-wod-next-page:
-              description: "if present indicates to the client that there is more data to be retreived using the link in the value"
+              description: "if present indicates to the client that there is more data to be retreived using the link in the value of this header. The response type of following a next page link is the same as when making the initial request."
               type: "string"
           schema:
             type: "array"
@@ -269,15 +412,16 @@ paths:
       parameters:
       - name: "store-name"
         in: "path"
-        description: "unique store name for this service endpoint"
+        description: "store name"
         required: true
         type: "string"
       - name: "dataset-name"
         in: "path"
-        description: "unique store name for this service endpoint"
+        description: "dataset name"
         required: true
         type: "string"
-      - name: "body"
+      - name: "entities"
+        in: "body"
         schema:
           type: "array"
           items:
@@ -294,13 +438,21 @@ paths:
       description: "Returns all the changes in the specified dataset. Use of the since parameter restricts the set of values returned."
       operationId: "get-changes"
       produces:
-      - "application/json"
+        - "application/json"
       parameters:
-      - name: "since"
-        in: "query"
-        description: "A token that the service interprets in order to only return changes that have occurred since that point."
-        required: false
-        type: "string"
+        - name: "store-name"
+          in: "path"
+          type: "string"
+          required: true
+        - name: "dataset-id"
+          in: "path"
+          type: "string"
+          required: true
+        - name: "since"
+          in: "query"
+          description: "A token that the service interprets in order to only return changes that have occurred since that point."
+          required: false
+          type: "string"
       responses:
         200:
           description: "successful operation"
@@ -320,6 +472,7 @@ paths:
               $ref: "#/definitions/Entity"
         400:
           description: "Invalid since token"
+
 
 definitions:
 
@@ -360,13 +513,19 @@ definitions:
       datatypes:
         type: "object"
 
+  EntityPartitions:
+    type: "object"
+    properties:
+      partitionlinks:
+        type: "string"
+
   Transaction:
     type: "object"
     properties:
       id:
         type: "string"
       operations:
-        type: array
+        type: "array"
         items:
           $ref: "#/definitions/TransactionOperation"
 

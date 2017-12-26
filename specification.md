@@ -434,122 +434,875 @@ The following form is allowed:
   "@type" : "xsd:string"  
 }
 
+## Web of Data Protocol
 
-## DataSet Sharing Protocol
+The WoD protocol consists of a service definition and the related semantics for each operation. The operations are described in prose and then formalised using swagger. The protocol is split into three distinct areas; data management, data query, and data synchronisation. 
 
-The DataSet Sharing Protocol (DSP) is a simple protocol to allow a client to keep a local copy of a dataset in-sync with a remote copy. It defines the set of endpoints that a DSP server MUST offer and the semantics that a compliant client MUST implement.
+## Common Definitions
 
-The goal of DSP is to provide clean and simple semantics that can be implement easily and quickly to promote the sharing of datasets. These mechanisms enable complete datasets to be shared easily, automatically and incrementally.
-
-Allowing applications to collect and download datasets incrementally allows them to run with no dependencies on remote services. This is turn allows them to provide a guarenteed quality of service to their users, and to offer query cababilities that are not possible in a federated, distributed or client server model.
-
-### Definitions
-
-<dl>
-  <dt>DataSet
-  <dd>A collection of Subjects.</dd>
-
-  <dt>DataSet Representation
-  <dd>A Semantic JSON representation of all or part of a DataSet.</dd>
-</dl>
-
-### Protocol Specification
-
-The protocol is defined using Swagger to
-
-#### The Service Document Endpoint
-
-This specification does not define the root URI for the document, but would recommend that a WOD server would expose:
+The following type definitions are used and referenced throughout the protocol description. They are listed here just once.
 
 <pre>
-  /dsp 
+
+definitions:
+
+  Store:
+    type: "object"
+    properties:
+      "name":
+        "type": "string"
+      "entity":
+        "$ref": "#/definitions/Entity"
+
+  Dataset:
+    type: "object"
+    properties:
+      "name":
+        "type": "string"
+      "entity":
+        "$ref": "#/definitions/Entity"
+
+  Entity:
+    type: "object"
+    properties:
+      "@id":
+        type: "string"
+      "@deleted":
+        type: "boolean"
+        default: false
+      "@context":
+        "$ref": "#/definitions/Context"
+      "@etag":
+        type: "string"
+
+  Context:
+    type: "object"
+    properties:
+      namespaces:
+        type: "object"
+      datatypes:
+        type: "object"
+
+  Transaction:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+      operations:
+        type: array
+        items:
+          $ref: "#/definitions/TransactionOperation"
+
+  TransactionOperation:
+    type: "object"
+    properties:
+      dataset:
+        type: "string"
+        description: "The name of the dataset to update entities in"
+      body:
+        type: array
+        items:
+          $ref: "#/definitions/Entity"
+
+  TransactionInfo:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+      status:
+        type: "string"
+
 </pre>
 
-Such as:
+## Data Management
+
+The data management part of the protocol defines operations for the creation and deletion of stores and datasets, and the updating of entities within a dataset. It also defines operations for creating and monitoring transactions that span datasets.
+
+### Operation Get Stores
+
+This operation returns a list of stores being managed by the WoD node. The list of stores can be filtered by providing the id of the store as a query parameter. Note that stores have a name that forms part of the URI, but also has a metadata entity that represents the store. This entity has an id in the form of a URI and it is this value that can be used to filter the list of stores.
 
 <pre>
-  https://api.webofdata.io/dsp 
+
+/stores:
+    get:
+      tags:
+        - "Management"
+      summary: Returns a list of stores
+      description: "returns a list of stores"
+      operationId: "get-stores"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "id"
+          in: "query"
+          description: "if present tries to find the store with that id (note: not the store name)"
+          required: false
+          type: string
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Store"
+
+</pre> 
+
+The following example shows a request that returns three stores.
+
+<pre>
+
+HOST https://wod-api.example.com
+GET /stores
+
+[
+  { "name" : "store1", 
+    "entity" : {
+      "@id" : "http://data.webofdata.io/publishing/store1"      
+    }
+  },
+  { "name" : "store2", 
+    "entity" : {
+        "@id" : "http://data.webofdata.io/publishing/store2"      
+    }
+  },
+  { "name" : "store3", 
+    "entity" : {
+        "@id" : "http://data.webofdata.io/publishing/store3"      
+    }
+  }  
+]
+
 </pre>
 
-The service document has the following structure:
+The following example shows a request that returns just one store. Only one store is returned as the query parameter is used to locate the store whose entity id matches the value provided.
 
 <pre>
-{
-  "title" : "this web of data data sync protocol",
-  "datasets_href" : "datasets"
-}
+
+HOST https://wod-api.example.com
+GET /stores?id=http://data.webofdata.io/publishing/store1
+
+[
+  { "name" : "store1", 
+    "entity" : {
+      "@id" : "http://data.webofdata.io/publishing/store1"      
+    }
+  }  
+]
+
 </pre>
 
-The document contains a single JSON Object with the following structure:
+### Operation Create Store
 
-<dl>
-  <dt>title (REQUIRED)
-  <dd>A label for this WebOfData data sync endpoint.</dd>
+The create store operation expects a JSON object to be sent in the body of the request. The JSON object may contain a 'name' property and MUST contains an 'entity' property. The value of the 'entity' property MUST be a JSON object that is valid according to the WoD JSON specification. If the 'name' property is present it MUST contain a string value. 
 
-  <dt>datasets_href (REQUIRED)
-  <dd>A relative or absolute URI that accepts HTTP GET and returns a resource of type `dataset-list`</dd>
-</dl>
+The server rejects the request if the store name is already in use, or if the id of the entity is the same as any existing store.
 
-#### Dataset List Resource Type
+If no name is provided the server MUST generate one.
 
-A resource of the type `dataset-list` has the following representation and semantics.
+The operation is defined as follows:
 
 <pre>
+
+/stores:
+    post:
+      tags:
+        - "Management"
+      summary: Create a new store
+      description: "Creates a new store with the name provided, if and only f this name is not already taken. If no name is provided then the server MUST generate one"
+      operationId: "create-store"
+      produces:
+        - "application/json"
+      parameters:
+      - name: "body"
+        in: "body"
+        description: "Store to create"
+        required: true
+        schema:
+          $ref: "#/definitions/Store"
+      responses:
+        201:
+          description: "successful operation - store created"
+          schema:
+            $ref: "#/definitions/Entity"
+        400:
+          description: "Occurs when the store passed in the body is invalid or missing"
+
+</pre>
+
+The following example shows the create store request:
+
+<pre>
+
+HOST https://wod-api.example.com
+POST /stores
+
+{ 
+  "name" : "store1", 
+  "entity" : {
+    "@id" : "http://data.webofdata.io/publishing/store1"      
+  }
+}  
+
+Response =>
+
+201 CREATED
+{ 
+  "name" : "store1", 
+  "entity" : {
+    "@id" : "http://data.webofdata.io/publishing/store1"      
+  }
+}  
+
+</pre>
+
+The following example shows a valid create store request where the server generates the store name.
+
+<pre>
+
+HOST https://wod-api.example.com
+POST /stores
+
+{ 
+  "entity" : {
+    "@id" : "http://data.webofdata.io/publishing/store1"      
+  }
+}  
+
+Response =>
+
+201 CREATED
+{ 
+  "name" : "someguid", 
+  "entity" : {
+    "@id" : "http://data.webofdata.io/publishing/store1"      
+  }
+}  
+
+</pre>
+
+### Operation Get Store
+
+The 'get-store' operation retreives the store entity using the local store name.
+
+<pre>
+
+  /stores/{store-name}:
+    get:
+      tags:
+        - "Management"
+      summary: get store by its local store name
+      description: returns a single store object or 404 not found
+      operationId: get-store
+      produces:
+        - "application/json"
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/Store"      
+
+</pre>
+
+The following example shows the use of this operation:
+
+<pre>
+
+HOST https://wod-api.example.com
+GET /stores/store1
+
+[
+  { "name" : "store1", 
+    "entity" : {
+      "@id" : "http://data.webofdata.io/publishing/store1"      
+    }
+  }  
+]
+
+</pre>
+
+### Operation Delete Store
+
+The 'delete-store' operation requests that the implementing WoD node deletes the store and all datasets and metadata associated with it. This include the entity for the store itself.
+
+<pre>
+
+  /stores/{store-name}:
+    delete:
+      tags:
+        - "Management"
+      summary: delete the named store, and all datasets
+      description: deletes the store or returns a 400 bad request if no store of the name provided exists
+      operationId: delete-store
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "store name"
+          required: true
+          type: "string"
+
+</pre>
+
+The following example shows how to request that a store is deleted.
+
+<pre>
+
+==== Request
+
+HOST https://wod-api.example.com
+DELETE /stores/store1
+
+==== Response
+
+200 OK
+
+</pre>
+
+
+### Operation Update Store Entity
+
+The entity for a store can be updated by using a POST request. The body of the request contains the new representation for the store entity.
+
+<pre>
+
+  /stores/{store-name}:
+    put:
+      tags:
+        - "Management"
+      summary: updates the store entity
+      description: updates the entity that represents the store
+      operationId: update-store
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "store name"
+          required: true
+          type: "string"
+        - name: "body"
+          in: "body"
+          description: "New representation of the store entity"
+          required: true
+          schema:
+            $ref: "#/definitions/Store"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/Store"      
+
+</pre>
+
+The following example shows how to update the entity for a store. Note in this example that the server renames the namespace prefix. A server is free to rename or map prefixes as it sees fit. What must hold true is the fully expanded URI. 
+
+<pre>
+
+HOST https://wod-api.example.com
+PUT /stores/store1
+
+{ 
+  "name" : "store1", 
+  "entity" : {
+    "@context": {
+        "namespaces" : {
+            "test" : "http://example.org/"
+        }
+    },
+    "@id"       : "http://data.webofdata.io/publishing/newidentifier",
+    "test:name" : "This store is very important"      
+  }
+}  
+
+Response =>
+
+200 OK
+{ 
+  "name" : "store1", 
+  "entity" : {
+    "@context": {
+        "namespaces" : {
+            "ns1" : "http://example.org/"
+        }
+    },
+    "@id"      : "http://data.webofdata.io/publishing/newidentifier",
+    "ns1:name" : "This store is very important"      
+  }
+}  
+ 
+</pre>
+
+
+### Operation Create Dataset
+
+A dataset is part of a store, and acts as a container for entities. A dataset can be created by sending a POST request. 
+
+<pre>
+
+  /stores/{store-name}/datasets:
+    post:
+      tags:
+        - "Management"
+      summary: Create a new dataset
+      description: "Creates a new dataset with the name provided iff this name is not already taken. If no name is provided the server MUST generate one."
+      operationId: "create-dataset"
+      produces:
+        - "application/json"
+      parameters:
+      - name: "body"
+        in: "body"
+        description: "Dataset to create"
+        required: true
+        schema:
+          $ref: "#/definitions/Dataset"
+      responses:
+        201:
+          description: "successful operation - dataset created"
+          schema:
+            $ref: "#/definitions/Dataset"
+        400:
+          description: "Occurs when the dataset passed in the body is invalid or missing"
+
+</pre>
+
+The following example shows how to create a dataset with a POST request.
+
+<pre>
+
+HOST https://wod-api.example.com
+POST /stores/store1/datasets
+
+{ 
+  "name" : "dataset1", 
+  "entity" : {
+    "@id" : "http://data.webofdata.io/publishing/store1/people"      
+  }
+}  
+
+Response =>
+
+201 CREATED
+{ 
+  "name" : "dataset1", 
+  "entity" : {
+    "@id" : "http://data.webofdata.io/publishing/store1/people"      
+  }
+}  
+
+</pre>
+
+### Operation Get Datasets
+
+The operation ´get-datasets' returns a list of the datasets contained within the named store. 
+
+<pre>
+
+/stores/{store-name}/datasets:
+    get:
+      tags:
+        - "Management"
+      summary: gets a list of datasets in the named store
+      description: returns a single store object or 404 if the store does not exist
+      operationId: get-datasets
+      produces:
+        - "application/json"
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Dataset"
+        400:
+          description: "Invalid store name"
+
+</pre>
+
+The following example shows how to retreive the datasets of a store.
+
+<pre>
+
+HOST https://wod-api.example.com
+GET /stores/store1/datasets
+
+Response =>
+
+200 OK
 [
   { 
-    "subjectidentifier"  : "http://data.webofdata.io/datasets/dataset1",
-    "name"               : "products dataset", 
-    "href"               : "datasets/dataset1", 
+   "name" : "dataset1", 
+    "entity" : {
+      "@id" : "http://data.webofdata.io/publishing/store1/people"      
+    }
   },
   { 
-    "subjectidentifier"  : "http://data.webofdata.io/datasets/dataset2",
-    "name"               : "people dataset", 
-    "href"               : "datasets/dataset2", 
+    "name" : "dataset2", 
+    "entity" : {
+      "@id" : "http://data.webofdata.io/publishing/store1/products"      
+    }
   }
-]
+]  
+
 </pre>
 
-The document contains a list of JSON Objects where each has the following structure:
+### Operation Get Dataset
 
-<dl>
-  <dt>subjectidentifier (REQUIRED)
-  <dd>The id for the dataset</dd>
-
-  <dt>name (REQUIRED)
-  <dd>A label for this dataset.</dd>
-
-  <dt>href (REQUIRED)
-  <dd>A relative or absolute URI that returns a resource of type `dataset-info`.</dd>
-</dl>
-
-#### Dataset Info Resource Type
-
-A resource of the type `dataset-info` has the following representation and semantics.
+Get the entity for a given dataset.
 
 <pre>
-{
-  "subjectidentifier"  : "http://data.webofdata.io/datasets/dataset1",
-  "name"               : "dataset1",
-  "subjects_href"      : "subjects",
-  "subjectcount"       : 3000,
-  "lastmodified"       : "2016-12-01T00:00:00Z"
-}
+
+  /stores/{store-name}/datasets/{dataset-name}:
+    get:
+      tags:
+        - "Management"
+      summary: gets a list of datasets in the named store
+      description: returns a single store object or 404 if the store does not exist
+      operationId: get-datasets
+      produces:
+        - "application/json"
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "store name"
+          required: true
+          type: "string"
+        - name: "dataset-name"
+          in: "path"
+          description: "dataset name"
+          required: true
+          type: "string"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/Dataset"
+        404:
+          description: "Invalid store name or dataset name"    
+
 </pre>
 
-The document contains a single JSON Object with the following structure:
+The following example shows how to retrieve a dataset entity.
 
-<dl>
-  <dt>subjectidentifier (REQUIRED)
-  <dd>The id for the dataset</dd>
+<pre>
 
-  <dt>name (REQUIRED)
-  <dd>A label for this dataset.</dd>
+HOST https://wod-api.example.com
+GET /stores/store1/datasets/dataset1
 
-  <dt>subjects_href (REQUIRED)
-  <dd>A relative or absolute URI that returns a resource of type `modified-subjects-list`.</dd>
-</dl>
+Response =>
 
-#### Modified Subjects List Resource Type
+200 OK
+{ 
+  "name" : "dataset1", 
+  "entity" : {
+    "@id" : "http://data.webofdata.io/publishing/store1/people"      
+  }
+}
+
+</pre>
+
+### Operation Update Dataset
+
+Updates the entity for the specified dataset.
+
+<pre>
+
+  /stores/{store-name}/datasets/{dataset-name}:  
+     tags:
+        - "Management"
+      summary: Update dataset
+      description: "Update the entity for the dataset"
+      operationId: "update-dataset"
+      produces:
+        - "application/json"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "store name"
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "dataset name"
+        required: true
+        type: "string"
+      - name: "body"
+        in: "body"
+        description: "New dataset entity data"
+        required: true
+        schema:
+          $ref: "#/definitions/Dataset"
+      responses:
+        200:
+          description: "successful operation - dataset updated"
+          schema:
+            $ref: "#/definitions/Dataset"
+        400:
+          description: "Occurs when the dataset passed in the body is invalid or missing"
+
+</pre>
+
+The following example shows how to update the entity of a dataset with a PUT request.
+
+<pre>
+
+HOST https://wod-api.example.com
+PUT /stores/store1/datasets/dataset1
+
+{ 
+  "name" : "dataset1", 
+  "entity" : {
+    "@context": {
+        "namespaces" : {
+            "test" : "http://example.org/"
+        }
+    },
+    "@id"       : "http://data.webofdata.io/publishing/store1/people",
+    "test:name" : "This dataset is very important"      
+  }
+}  
+
+Response =>
+
+200 OK
+{ 
+  "name" : "dataset1", 
+  "entity" : {
+    "@context": {
+        "namespaces" : {
+            "ns1" : "http://example.org/"
+        }
+    },
+    "@id"       : "http://data.webofdata.io/publishing/store1/people",
+    "ns1:name" : "This dataset is very important"      
+  }
+}   
+ 
+</pre>
+
+### Operation Delete Dataset
+
+A request to delete a dataset MUST delete the dataset entity and all contained entities.
+
+<pre>
+
+  /stores/{store-name}/datasets/{dataset-name}:  
+    delete:
+      tags:
+        - "Management"
+      summary: Delete dataset
+      description: "Delete the dataset"
+      operationId: "delete-dataset"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "store name"
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "dataset name"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "successful operation - dataset deleted"
+</pre>
+
+
+The following example shows how to delete a dataset.
+
+<pre>
+
+HOST https://wod-api.example.com
+DELETE /stores/store1/datasets/dataset1
+
+=> response
+200 OK
+
+</pre>
+
+
+### Operation Get Entities
+
+A dataset contains entities. The complete set of entities in a dataset can be retrieved with the 'get-entities' operation. Responses to this request are free to stream all entities or return pages of entities and a link to the next page. 
+
+This endpoint can also be used to retrieve a specific entity from the dataset. A specific entity can be retrieved by providing an id query parameter whose value is the URI id of the entity.
+
+<pre>
+
+  /stores/{store-name}/datasets/{dataset-name}/entities:
+    get:
+      tags:
+        - "Management"
+      summary: "Get entities in the dataset"
+      description: "Returns the entities in the specified dataset. Can also be used to locate a specific entity using the id query parameter."
+      operationId: "get-entities"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "store name"
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "dataset name"
+        required: true
+        type: "string"
+      - name: "id"
+        in: "query"
+        description: "If provided it must be either a full uri or curie and it will limit the number of entities to either 0 or 1, depending if an entity with that id exists in the dataset"
+      responses:
+        200:
+          description: "successful operation"
+          headers:
+            x-wod-next-page:
+              description: "if present indicates to the client that there is more data to be retreived using the link in the value of this header. The response type of following a next page link is the same as when making the initial request."
+              type: "string"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Entity"
+
+</pre>
+
+The following example shows how to use the 'get-entities' operation.
+
+<pre>
+
+HOST https://wod-api.example.com
+GET /stores/store1/datasets/entities
+
+Response =>
+
+200 OK
+[
+  { 
+    "@id" : "@context", 
+    "namespaces" : {
+      "products" : "http://examples.org/products/"   
+    }
+  },
+  {
+    "@id" : "products:1",
+    "producst:name" : "product 1"      
+  },
+  {
+    "@id" : "products:2",
+    "producst:name" : "product 2"      
+  }
+]  
+
+</pre>
+
+### Operation Store Entities
+
+The store entities operation lets a client send a collection of entity objects that the server MUST either add, update or delete in the dataset specified.
+
+If the entity specified exists then the current representation must be replaced with the new one. If the entity does not exist a new one is added. If the entity provided is marked with the '@deleted' property (with a value of 'true') then the entity must be deleted from the dataset. 
+
+<pre>
+
+  /stores/{store-name}/datasets/{dataset-name}/entities:
+    post:
+      tags:
+        - "Management"
+      summary: "Add or replace entities in the dataset"
+      description: "Adds or replaces all the entities in the specified dataset with those provided in the body."
+      operationId: "store-entities"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "store name"
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "dataset name"
+        required: true
+        type: "string"
+      - name: "entities"
+        in: "body"
+        schema:
+          type: "array"
+          items:
+            $ref: "#/definitions/Entity"
+      responses:
+        200:
+          description: "successful operation"
+
+</pre>
+
+## Data Synchronisation
+
+The data synchronisation part of the protocol allows a client to keep a local copy of a dataset in-sync with a remote copy. It defines the service endpoint that a Web of Data server MUST offer and the semantics a compliant client MUST implement.
+
+The goal of the synchronisation protocol is to provide clean and simple semantics that can be implemented easily and quickly to promote the sharing of datasets. These mechanisms enable complete datasets to be shared easily, automatically and incrementally.
+
+Allowing applications to collect and download datasets incrementally allows them to run with no dependencies on remote services. This is turn allows them to provide a guarenteed quality of service to their users, and to offer query capabilities that are not possible in a federated, distributed or client server model.
+
+The protocol is defined using prose and Swagger. Each operation describes the service endpoint, the parameters and semantics.
+
+### Operation: Get Changes
+
+The 'get-changes' operation supports the synchronisation protocol described in the semantics section for this operation. The following Swagger fragment def
+
+<pre>
+
+/stores/{store-name}/datasets/{dataset-id}/changes:
+    get:
+      tags:
+        - "Synchronisation"
+      summary: "Get dataset changes"
+      description: "Returns all the changes in the specified dataset. Use of the since parameter restricts the set of values returned."
+      operationId: "get-changes"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "since"
+        in: "query"
+        description: "A token that the service interprets in order to only return changes that have occurred since that point."
+        required: false
+        type: "string"
+      responses:
+        200:
+          description: "successful operation"
+          headers:
+            x-wod-full-sync:
+              description: if present indicates that a full sync is required. 
+              This means that all local data should be deleted and the new data arriving put in its place.
+              type: string
+            x-wod-next-page:
+              description: if present indicates to the client that there is more data to be 
+              retrieved
+              type: string
+            x-wod-next-request:
+              description: if present it is the url that should be used the next time the client wishes to retrieve changes.
+              type: string
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Entity"
+        400:
+          description: "Invalid since token"
+
+</pre>
+
+### Semantics
 
 The resource type `modified-subjects-list` is an feed of subject representations that are ordered by when they were created, modified, or deleted.
 
