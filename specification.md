@@ -1,5 +1,5 @@
 
-# WebOfData Specification
+# Web of Data (WoD) Specification
 
 Author  : Graham Moore  
 Contact : gramoore (at) outlook (dot) com  
@@ -1283,6 +1283,8 @@ Allowing applications to collect and download datasets incrementally allows them
 
 The 'get-changes' operation exposes a list of the entities that have changed in the specified dataset.
 
+This operation exposes the changes that occur to a dataset. A server MUST return the changes in the order in which they occurred.
+
 <pre>
 
 /stores/{store-name}/datasets/{dataset-name}/changes:
@@ -1290,7 +1292,7 @@ The 'get-changes' operation exposes a list of the entities that have changed in 
       tags:
         - "Synchronisation"
       summary: "Get dataset changes"
-      description: "Returns all the changes in the specified dataset. Use of the since parameter restricts the set of values returned."
+      description: "Returns all the changes in the specified dataset."
       operationId: "get-changes"
       produces:
       - "application/json"
@@ -1314,12 +1316,10 @@ The 'get-changes' operation exposes a list of the entities that have changed in 
             x-wod-full-sync:
               description: if present indicates that a full sync is required. This means that all local data should be deleted and the new data arriving put in its place.
               type: boolean
-            x-wod-next-page:
-              description: if present indicates to the client that there is more data to be retrieved
+            x-wod-next-data:
+              description: The url that should be used the next time the client wishes to retrieve changes.
               type: string
-            x-wod-next-request:
-              description: if present it is the url that should be used the next time the client wishes to retrieve changes.
-              type: string
+              required: true
           schema:
             type: "array"
             items:
@@ -1329,80 +1329,70 @@ The 'get-changes' operation exposes a list of the entities that have changed in 
 
 </pre>
 
-### Semantics
+The following example describes an interaction between a client and a server. The client requests changes, updates a local store or system, stores the x-wod-next-data link, and then, later on, makes a get request to the stored x-wod-next-data URL. 
 
-The resource type `modified-subjects-list` is an feed of subject representations that are ordered by when they were created, modified, or deleted.
+The headers in the 
 
-A resource of the type `modified-subjects-list` has the following representation, headers and semantics.
+#### X-WOD-FULL-SYNC HEADER
 
-When fetching a resource of this type the following HTTP headers are applicable: 
-
-##### X-WOD-DSP-FEED-TYPE
-
-The response can include a `X-WOD-DSP-DATASET-RESET` header. The header can have one of the following values:
+The response can include a `X-WOD-FULL-SYNC` header. The header can have one of the following values:
 
   - false (default)
 
-    Meaning that the set of subjects in the list can replace the subject representations the client already has stored.
+    Meaning that the entities in the list can replace the subject representations the client already has stored.
 
   - true
 
-    Meaning that the client should delete all local data and replace it with what it receives. 
-
-##### X-WOD-DSP-NEXT-PAGE
-
-The `X-WOD-DSP-NEXT-PAGE` header MUST contain a URI that will return a resource of type `modified-subjects-list`.
-
-This header is used to provide paging when the dataset being synchronised is large. The server is free to choose the page size.
-
+    Meaning that the client should delete all local data and replace it with what it receives. This value is true when a client first requests changes, and can also occur when the dataset on the server is deleted and repopulated. It MUST only appear in the first response, even if the data to repopulate is made available over many requests.
+    
 ##### X-WOD-DSP-NEXT-DATA
 
-The `X-WOD-DSP-NEXT-DATA` header MUST contain a URI that will return a resource of type `modified-subjects-list`.
+The `X-WOD-DSP-NEXT-DATA` header MUST contain a URI that will return the same kind of response as described in the 'get-changes' operation. 
 
-This header is used to provide the client with a link that will provide the next collection of updates.
+This header can be used by servers to split the changes over several pages, and is used to indicate to the client the URL to be used the next time the client wishes to get changes. 
 
 ### Deleted Subject Representations
 
-The server can include deleted subject representations in the response. They look like:
+The server can include deleted entities in the response. They have the following representation:
 
 <pre>
   [
     ...
     {
-      "_si"      : "...",
-      "_deleted" : true     ## TODO: use a proper wod namespace rather than _
+      "@id"      : "...",
+      "@deleted" : true     
     }
     ...
   ]
 </pre>
 
-The "_si" property and the "_deleted" property MUST be included. The server MAY provide the rest of the deleted subject representation.
+The "@id" property and the "@deleted" property MUST be included. The server MAY provide the rest of the deleted entity data.
 
 ### Client Semantics
 
-A client is assumed to be storing, and keeping in sync, a local copy of a remote dataset. The remote dataset is exposed using the data sharing protocol.
+A client is assumed to be storing, and keeping in sync, a local copy of a remote dataset. The actual form of the local storage is left to the client to decide. It could be updating another WoD service endpoint, or writing into a database.
 
-If the client has an empty local dataset and wants to fetch all the data from the remote dataset then it should call to the subjects endpoint and follow the URL value contained in the `X-WOD-DSP-NEXT-PAGE` header until there are no more headers of this type contained in the response. 
+If the client has not yet synchronised the dataset then it must first use the 'get-changes' operation to obtain the initial data. 
 
-As the client processes each page of subjects it should add the subject representations it receives into its local dataset. 
+The response to this request will be an array of entities and a header, 'X-WOD-NEXT-DATA', that contains a link to more of the changes. The client stores the entities provided in the array into a local dataset. 
 
-The client is free to store the value of the `X-WOD-DSP-NEXT-DATA` header value link it at any point, but it MUST store it after processing the last page.
+For each entity the client deletes the local representation and replaces it with the new one provided. If the entity provided is marked as deleted then the client must delete the local copy. Clients should not update local entities unless there has been an actual change.
 
-At subsequent intervals a client should use the stored `X-WOD-DSP-NEXT-DATA` link to determine if there are any changes to the dataset. If there are changes then the client should replace the current local copy of the subject representation with the one provided by the server. It should again resolve the `X-WOD-DSP-NEXT-PAGE` link until there are no more subject representations. 
+The client MUST store the value of `X-WOD-NEXT-DATA` header value link after it has committed the changes indicated by the entities in the response. 
 
-Clients are free to use their own schedule for following the `X-WOD-DSP-NEXT-DATA` link.
+A client can then keep making calls and then storing the URL in the 'X-WOD-NEXT-DATA' header until no more data is available. 
 
-When a client recieves the `X-WOD-DSP-DATASET-RESET` header and it has a value of `true` then the client MUST delete all content from the local dataset and replace it with what comes from the server.
+At subsequent further intervals a client should use the stored `X-WOD-NEXT-DATA` link to determine if there are any changes to the dataset. 
 
-Subjects with the property "_deleted" with a value of "true" mean that the client should remove the subject representation with the corresponding '_si' from the local dataset.
+Clients are free to use their own schedule for following the `X-WOD-NEXT-DATA` link.
 
-A client is free to identify and name the local dataset. 
+When a client receives the `X-WOD-FULL-SYNC` header and it has a value of `true` then the client MUST delete all content from the local dataset and replace it with what comes from the server.
 
 ### Operation Get Change Partitions
 
-To allow the changes to a dataset to be processed in parallel a dataset MAT offer the 'get-changes-partitions' endpoint. This endpoint returns a list of links that can then be used to consume the changes to a dataset in parallel.
+To allow the changes to a dataset to be processed in parallel a dataset MAY offer the `get-changes-partitions` endpoint. This endpoint returns a list of links that can then be used to consume the changes to a dataset in parallel. It also returns a header of `X-WOD-NEXT-PARTITIONS`. 
 
-The 'since' parameter is supported when requesting partitions. 
+A client calling this operation receives N links to change data. Each of those links resolves to a response that is the same as a call to the 'get-changes'
 
 
 #### WebSocket Semantics
