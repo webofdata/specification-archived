@@ -1247,23 +1247,45 @@ If the entity specified exists then the current representation must be replaced 
 
 </pre>
 
+The following example shows how to upload several entities to be stored in a dataset.
+
+<pre>
+
+</pre>
+
+
+### Operation Get Partitions
+
+To allow the entities of a dataset to be fetched in parallel a dataset MAY offer the 'get-partitions' endpoint. This endpoint returns a list of links that can then be used to consume the dataset in parallel. The mechanism for retrieving a single partition is identical to that of making a call to the 'get-entities' operation.
+
+The 'id' parameter is not valid when requesting partitions or resolving partitions links.
+
+
+### Operation Get Transactions
+
+
+### Operation Create Transaction
+
+
+
+
+
+
 ## Data Synchronisation
 
-The data synchronisation part of the protocol allows a client to keep a local copy of a dataset in-sync with a remote copy. It defines the service endpoint that a Web of Data server MUST offer and the semantics a compliant client MUST implement.
+The data synchronisation part of the protocol allows a client to keep a local copy of a dataset in-sync with a remote copy. It defines the service endpoint that a WoD server MUST offer and the semantics a compliant client MUST implement.
 
 The goal of the synchronisation protocol is to provide clean and simple semantics that can be implemented easily and quickly to promote the sharing of datasets. These mechanisms enable complete datasets to be shared easily, automatically and incrementally.
 
 Allowing applications to collect and download datasets incrementally allows them to run with no dependencies on remote services. This is turn allows them to provide a guarenteed quality of service to their users, and to offer query capabilities that are not possible in a federated, distributed or client server model.
 
-The protocol is defined using prose and Swagger. Each operation describes the service endpoint, the parameters and semantics.
-
 ### Operation: Get Changes
 
-The 'get-changes' operation supports the synchronisation protocol described in the semantics section for this operation. The following Swagger fragment def
+The 'get-changes' operation exposes a list of the entities that have changed in the specified dataset.
 
 <pre>
 
-/stores/{store-name}/datasets/{dataset-id}/changes:
+/stores/{store-name}/datasets/{dataset-name}/changes:
     get:
       tags:
         - "Synchronisation"
@@ -1273,22 +1295,27 @@ The 'get-changes' operation supports the synchronisation protocol described in t
       produces:
       - "application/json"
       parameters:
-      - name: "since"
-        in: "query"
-        description: "A token that the service interprets in order to only return changes that have occurred since that point."
-        required: false
+      - name: "store-name"
+        in: "path"
+        description: "store name."
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "dataset name."
+        required: true
         type: "string"
       responses:
         200:
           description: "successful operation"
           headers:
+            x-wod-change-count:
+              description: if present indicates the number of changes that server has at this point in time in the specified dataset.    
             x-wod-full-sync:
-              description: if present indicates that a full sync is required. 
-              This means that all local data should be deleted and the new data arriving put in its place.
-              type: string
+              description: if present indicates that a full sync is required. This means that all local data should be deleted and the new data arriving put in its place.
+              type: boolean
             x-wod-next-page:
-              description: if present indicates to the client that there is more data to be 
-              retrieved
+              description: if present indicates to the client that there is more data to be retrieved
               type: string
             x-wod-next-request:
               description: if present it is the url that should be used the next time the client wishes to retrieve changes.
@@ -1371,6 +1398,13 @@ Subjects with the property "_deleted" with a value of "true" mean that the clien
 
 A client is free to identify and name the local dataset. 
 
+### Operation Get Change Partitions
+
+To allow the changes to a dataset to be processed in parallel a dataset MAT offer the 'get-changes-partitions' endpoint. This endpoint returns a list of links that can then be used to consume the changes to a dataset in parallel.
+
+The 'since' parameter is supported when requesting partitions. 
+
+
 #### WebSocket Semantics
 
 As well as the HTTP semantics described above the following websocket variant is also described. This variant is designed to better support real time push of subject changes. 
@@ -1382,13 +1416,6 @@ The WebSocket variant of the protocol sees a client connect to a websocket endpo
 /stores/{store-id}/dataset/{ds-id}/changes-web-socket
 
 </pre>
-
-#### GRPC Semantics
-
-As well as the HTTP semantics described above the following GRPC binding is defined. 
-
-
-
 
 ## Web Of Data Query Protocol
 
@@ -1430,10 +1457,6 @@ A server MAY choose to return an empty document if it doesn't support CURIE expa
 
 A client can use a CURIE when querying. The curie is first resolved against the publishing namespaces and then the internal namespaces. 
 
-### Subject Representation
-
-All data returned follows the Semantic JSON format. The mime type application/json+semantic is used to indicate this.
-
 ### Linked Data URL Resolution Semantics
 
 Follow-your-nose semantics works by a web endpoint capturing requests for subject representations and re-writing and re-routing them to the WOD-QP server. e.g:
@@ -1444,84 +1467,14 @@ http://data.webofdata.io/people/gra gets re-written as
 http://api.webofdata.io/query?connected=http://data.webofdata.io/people/gra
 </pre>
 
-## Web Of Data - Management Protocol
 
-This protocol defines how clients can update a WebOfData node with new datasets and the contents of those datasets. Access to these endpoints should be tightly controlled.
+## Conformance
 
-### Protocol Definition
+It is not possible to define conformance for a data model, conformance can only be defined in terms of observable actions and responses. 
 
-TODO: This is still a bit of a todo but here is the outline:  
+The automated conformance test suite can be run against any WoD node that claims to implements the protocol and serialisation parts of this specification. 
 
-<pre>
-
-Store Management
-----------------
-
-GET /stores
-
-POST /stores
-
-GET /stores/{store-id}
-
-DELETE /stores/{store-id}
-
-PUT /stores/{store-id} 
-
-
-DataSet Management:
--------------------
-
-GET /stores/{store-id}/datasets
-
-POST /stores/{store-id}/datasets { dataset body }
-
-PUT /stores/{store-id}/datasets/{dataset-id} { dataset body }
-
-DELETE /stores/{store-id}/datasets/{dataset-id}
-
-GET /stores/{store-id}/datasets/{dataset-id}
-
-Subjects Management
--------------------
-
-GET /stores/{store-id}/datasest/{dataset-id}/entities &lt; basically the same as WOD-SP.
-
-PUT /stores/{store-id}/datasets/{dataset-id}/entities?id=&lt;uri&gt; { subject-representation }
-
-DELETE /stores/{store-id}/datasets/{dataset-id}/subjects?id=&lt;uri&gt;
-
-POST /stores/{store-id}/datasets/{dataset-id}/subjects [ { subject-representation }, { subject-representation } ]
-
-DELETE /stores/{store-id}/datasets/{dataset-id}/subjects &lt; Clears all subjects but leaves the dataset.
-
-</pre>
-
-<pre>
-
-In order to update several entities across different data sets in a transactional way the following endpoint MUST be provided:
-
-POST /stores/{store-id}/txns 
-
-{
-  "reference"  : "some client provided info",
-  "operations" : [
-    {
-      "method"  : "PUT",
-      "resource" : "/datasets/people/person1",
-      "data"     : { }
-    },
-
-  ]
-}
-
-GET /stores/{store-id}/txns/{txn-id}
-
-GET /stores/{store-id}/txns?status=inprogress
-
-GET /stores/{store-id}/txns?status=completed
-
-
-</pre>
+The conformance client can be found online at http://github.com/webofdata/conformance. It includes source code, instructions for running the conformance tests and also a link to a pre-built docker image.
 
 ## References
 
@@ -1552,98 +1505,3 @@ GET /stores/{store-id}/txns?status=completed
          words for use in RFCs to Indicate Requirement Levels,
          IETF, March 1997.</li>
 </dl>
-
-
-### Example (Informative)
-
-Before describing the JSON representation a few examples are provided to demonstrate usage. A single JSON document is a serialisation of one or more entities. That entity has identity in the form of an URI and the property keys of the JSON object should also be expressed as URIs.
-
-The following example shows the raw JSON, the fully expanded Semantic JSON equivalent, and the concise Semantic JSON equivalent:
-
-Here is a simple description of a person:
-
-<pre>
-    {
-      "id"        : "gra",
-      "age"       : 23,
-      "skills"    : [ "csharp", "data"],
-      "education" : [ { "southampton university"} ]
-    }
-</pre>
-
-To be more `semantic` (robust in our clarity of what we are talking about), we would like the following:
-
-<ul>
-<li>To unambiguously know which property is the 'subject identity' property for this representation.
-<li>For the identity of the thing we are talking about to be an IRI.
-<li>For references to other concepts to be declared simply and unambiguously
-<li>For contained objects to also express their identity
-</ul>
-
-The Semantic JSON version looks like this:
-
-<pre>
-
-    {
-      ## Use of @id to denote the subject identity property
-      "@id"      : "http://data.example.org/people/gra",
-
-      ## Use of full IRIs as property names
-      "http://data.example.org/schema/person/age" : 23,
-
-      ## Use of '< >' to indicate references to other subjects 
-      "http://data.example.org/schema/person/skills" : 
-        [ "<http://data.example.org/skills/csharp>", 
-          "<http://data.example.org/skills/data>" ],
-
-      "education" : [ 
-          { 
-            ## Contained objects can also have an identifier property
-            "@id" : http://data.example.org/unis/soton",
-            "name" : "southampton university"
-          } 
-        ]
-    }
-
-</pre>
-
-And the concise Semantic JSON looks like this:
-
-<pre>
-
-    {
-      ## The defintion of a context simplifies the adoption of URIs and 
-      ## improves human readability of the JSON
-      ## Also allows for easy reuse of existing JSON.
-      ## Context definition doesn`t have to be colocated with every Semantic JSON object.
-      ## They can be part of the request header or as a seperate JSON object
-      ## when dealing with an array of Semantic JSON objects.
-
-      "@context" : {
-        
-        # The default instance namespace
-        "_:"   : "http://data.example.org/people/",
-        
-        # The default schema namespace
-        "__:"  : "http://data.example.org/schema/person/",
-        "skills" : "http://data.example.org/skills/"
-        "universities" : "http://data.example.org/universities/"
-      },
-
-      "@id"      : "gra",
-
-      "age" : 23,
-
-      "skills" : 
-        [ "<skills:csharp>", 
-          "<skills:data>" ],
-
-      "education" : [ 
-          { 
-            "_si" : "universities:soton"
-            "name" : "southampton university"
-          } 
-        ]
-    }
-
-</pre>

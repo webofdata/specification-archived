@@ -137,23 +137,6 @@ paths:
         200:
           description: "succesful operation"
 
-  /stores/{store-name}/namespaces:
-    get:
-      tags:
-        - "Management"
-      summary: Returns an object that contains prefixes and namespace expansions used in this store.
-      operationId: get-namespaces
-      parameters:
-        - name: "store-name"
-          in: "path"
-          description: "unique store name for this service endpoint"
-          required: true
-          type: "string"
-      responses:
-        200:
-          description: "succesful operation"
-
-
   /stores/{store-name}/transactions:
     post:
       tags:
