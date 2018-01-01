@@ -9,17 +9,17 @@ Issues : <http://github.com/webofdata/specification/issues>
 
 ## Overview
 
-Like HTML and HTTP did for machine to human communication, WebOfData aims to provide the building blocks to allow any device or application to easily communicate, access, modify, navigate and share data at web scale. Enabling low friction, meaningful,standardised, machine-to-machine communication.
+Like HTML and HTTP did for machine to human communication, Web of Data (WoD) aims to provide the building blocks to allow any device or application to easily communicate, access, modify, navigate and share data at web scale. Enabling low friction, meaningful,standardised, machine-to-machine communication.
 
-WebOfData defines a protocol, data model, and data representation format for publishing, sharing and connecting data on the web. It is intended to be easy to implement and work at a level of generality that is widely applicable.
+Web of Data defines a protocol, data model, and data representation format for publishing, sharing and connecting data on the web. It is intended to be easy to implement and work at a level of generality that is widely applicable.
 
 The WoD data model has at it's core the notion of an entity. An entity has identity in the form of a URI. An entity also has properties whose 'names' or 'keys' are also URIs. The use of URIs to identify things and name properties provides a powerful, web scale approach to naming. The values of these properties can either be literals, based on XML schema data types, or complex types such as arrays, or another entity. Finally, there is a special reference type. This reference type has a value that is a URI. This URI references another entity to create a graph of entities that can span the web. 
 
-The protocol is designed to facilitate the sharing, updating, creating and publishing of collections of entities, the retrieval of a given data entity, and the navigation of connected entities. It is expected that collections of entities can exists in databases, existing applications and dedicated WoD data stores. All kinds of applicatios can implement and support the protocol in meaningful ways, allowing a vast array of client applications to easily consume and use data from around the web. 
+The protocol is designed to facilitate the sharing, updating, creating and publishing of collections of entities, the retrieval of a given data entity, and the navigation of connected entities. It is expected that collections of entities can exists in databases, existing applications and dedicated WoD data stores. All kinds of applications can implement and support the protocol in meaningful ways, allowing a vast array of client applications to easily consume and use data from around the web. 
 
 The WoD representation format uses JSON with a few well defined keys that support the use of URIs as identifiers and property names. 
 
-Finally, WoD defines a protocol for synchronising datasets between WebOfData implementations.
+Finally, WoD defines a protocol for synchronising datasets. This allows clients to collect and keep in sync core data from around the web to offer new services and provide guarenteed quality of service.
 
 ## Background
 
@@ -27,7 +27,7 @@ Several attempts have been made to define a standard and generic data model and 
 
 WebOfData builds on the experience of these and other standards to propose a universal data management and data sharing API, coupled with a data model that works at web scale.
 
-A key concept that underpins WebOfData and it is the notion of a 'subject'. A subject is any thing, about which, anything may be stated or asserted, by anyone. A subject is an abstract concept, it can be a person, a document on a file system, a row in a database, a book. 
+A key concept that underpins WebOfData is the notion of a 'subject'. A subject is any thing, about which, anything may be stated or asserted, by anyone. A subject is an abstract concept, it can be a person, a document on a file system, a row in a database, a book. 
 
 Computer systems are all about building representations of these abstractions. Every application creates a model where the data structures are proxies, or stand-ins for their 'real life' counterpart.  
 
@@ -42,6 +42,8 @@ The WoD APIs are refinement of things like OData, Linked Data Fragments and SDSh
 ## Introduction
 
 WebOfData defines a data model, a JSON serialistion for the data model, a data access protocol (Query), a data sharing protocol (Synchronisation) and a data management protocol (CRUD). Compliant implementations can choose which of the APIs they support, but must adhere to the rules and semantics of the data model and serialisation definition. 
+
+We talk about the of implementions of these protocols and adherence to the serialisation representations to be WoD nodes. A WoD node implementation can 
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 
