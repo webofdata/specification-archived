@@ -19,7 +19,7 @@ The protocol is designed to facilitate the sharing, updating, creating and publi
 
 The WoD representation format uses JSON with a few well defined keys that support the use of URIs as identifiers and property names. 
 
-Finally, WoD defines a protocol for synchronising datasets. This allows clients to collect and keep in sync core data from around the web to offer new services and provide guarenteed quality of service.
+Finally, WoD defines a protocol for synchronising datasets. This allows clients to collect and keep in sync core data from around the web to offer new services and provide guaranteed quality of service.
 
 ## Background
 
@@ -57,7 +57,7 @@ Given that each entity is only a partial representation of a subject the data mo
 
 As well as entities there are two levels of container types. The store and the dataset. A store consists of zero or more datasets, and each dataset is comprised of 0 or more entities. 
 
-WebOfData data core concepts: 
+### Terms: 
 
 <dl>
   <dt>Subject</dt>
@@ -108,13 +108,11 @@ One of the key things to note is that a root-entity must have a id. Descendent e
 
 ### DataSets
 
-A dataset is a collection of entities. It provides a container into which new entities can be managed (created, deleted, updated, located). 
+A dataset is a collection of entities. It provides a container where entities can be managed (created, deleted, updated, located). 
 
 Datasets can contain as most 1 entity with any given subject identifier. This means that the subject identifier is the unique key for an entity in a dataset. But, an entity with the same subject identifier can exist in other datasets.
 
-Splitting the store into datasets allows for more than one representation of the same subject (an entity with the same subject identifier as another entity) to be in a single store. 
-
-Datasets should be able to provide a list of which entities have changed since a given point. The way this point marker is defined is opaque and left to the implementation to decide. Typical examples would be a datetime value, or a sequence number.
+Splitting the store into datasets allows for more than one representation of the same subject (an entity with the same subject identifier as another entity) to exist in a single store. 
 
 When resolving a request for a subject identifier against a store then by default the lookup is across all datasets. In this case it is possible for more than one entity with the same subject identifier to be located. When this occurs the entity representations should be merged as described below. A client can request that lookup only occurs in the context of one dataset. In this case, due to the fact that within a dataset there is exaclty 0 or 1 entity with a given subject identifier, at most 1 entity will be located. 
 
@@ -140,7 +138,7 @@ datasets := [] | dataset, datasets
 
 ### Merging Entities
 
-A client can (potentially) retreive a partial subject representation for the same subject from many WOD service endpoints. An application or server may decide that even though the subject identifiers are different that the entities represent the same subject, and entities are allowed to express a belief that they are the same as one or more other subjects using the "wod:sameas" property. In all of these cases two or more entities are merged to create a more unified representation.  
+A client can (potentially) retrieve a partial subject representation for the same subject from many WoD service endpoints. An application or server may decide that even though the subject identifiers are different that the entities represent the same subject, and entities are allowed to express a belief that they are the same as one or more other subjects using the "wod:sameas" property. In all of these cases two or more entities are merged to create a more unified representation.  
 
 The rules for merging two entity representations of the same subject are defined below. If more than two entities need to be merged, then the algorithm should be applied on the first two entities, then on the resulting merged entity and the next entity to be merged; and so on.
  
@@ -161,7 +159,7 @@ To merge two subject representations A and B the following algorithm should be a
 
 The above merging semantics define the formalism for merging two entities with the same subject identifier. In addition, the sameas resolution rule defines how a WoD server can recursively merge a set of entities that declare themselves to be the same.
 
-This behaviour is optional in that a server MAY offer this capability, and even in the case when it does then the client must specifically request it.
+This behaviour is optional in that a server MAY offer this capability, and even in the case when it does then the client MUST specifically request it.
 
 Given a subject identifier, find the entity that corresponds to that URI. Locate the 'wod:sameas' property and for each subject-ref value in the array look up and merge that entity according to the rules above.
 
@@ -175,7 +173,7 @@ JSON is used as the serialisation format for the Data Model. It defines how an i
 
 The <b>id</b> property of the entity is serialised with the key <b>@id</b>.
 
-The <b>subject-ref</b> URI values are serialised with <b><</b> as the first character and <b>></b> as the last character. The enclosing value is the string representation of a curie or URI.
+The <b>subject-ref</b> URI values are serialised with <b><</b> as the first character and <b>></b> as the last character. The enclosing value is the string representation of a CURIE or URI.
 
 While full URIs can be used in WoD Json documents as keys, values and id property values, it is optimal for machines and easier for humans if full URIs are replaced with CURIEs. Contexts definitions are used to define default namespaces, CURIEs. The datatypes of property values can also be defined in a context.
 
@@ -185,7 +183,7 @@ The following rules define how JSON data must be written in order to be consider
 
 The <b>@d</b> property of the entity is serialised as key of <b>@id</b>. The value of this property defines the identifier for the entity. This property MUST be present on the root JSON object. The value of this property can be an full URI or a CURIE. If it is neither of these two then it is interpreted in relation to the default context (see context resolution).
 
-The following examples show the different usages and are all semantically equivalent:
+The following examples show the different serialisations that are all semantically equivalent:
 
 <pre>
   {
@@ -270,7 +268,7 @@ and:
 
 #### Property Naming Rule
 
-As well as being able to talk about 'subjects' using subject identifiers, we also need to be able to agree on the properties being used. In WoD all property names are URIs. They can be expressed as full IRIs, Curies or simple values. If they are expressed as simple values they are resolved against the defualt namespace defined in a context.
+As well as being able to talk about 'subjects' using subject identifiers, we also need to be able to agree on the properties being used. In WoD all property names are URIs. They can be expressed as full IRIs, Curies or simple values. If they are expressed as simple values they are resolved against the default namespace defined in a context.
 
 An example with properties as IRIs. Both the 'foaf:name' and 'http://data.example.org/vocab/lives-in' are properties that will resolve to full IRIs.
 
@@ -427,14 +425,18 @@ Resolves to:
 
 Datatype Support in property expansions. In addition to the simple form of:
 
-"<key>" : "<namespace-prefix>"
+<pre>
+    "&lt;key&gt;" : "&lt;namespace-prefix&gt;"
+</pre>
 
 The following form is allowed:
 
-<key> : {
-  "@id"   : "<namespace-prefix>",
-  "@type" : "xsd:string"  
-}
+<pre>
+    &lt;key&gt; : {
+      "@id"   : "&lt;namespace-prefix&gt;",
+      "@type" : "xsd:string"  
+    }
+</pre>
 
 ## Web of Data Protocol
 
@@ -519,6 +521,11 @@ definitions:
 ## Data Management
 
 The data management part of the protocol defines operations for the creation and deletion of stores and datasets, and the updating of entities within a dataset. It also defines operations for creating and monitoring transactions that span datasets.
+
+
+### Operation Get Service 
+
+This operation returns information about the service endpoint itself. 
 
 ### Operation Get Stores
 
@@ -1020,6 +1027,7 @@ Updates the entity for the specified dataset.
 <pre>
 
   /stores/{store-name}/datasets/{dataset-name}:  
+    put:
      tags:
         - "Management"
       summary: Update dataset
@@ -1092,6 +1100,94 @@ Response =>
  
 </pre>
 
+### Operation Merge Dataset
+
+Starts a merges operation from a named dataset (dataset B) into the one addressed (dataset A). The semantics of this operation requires:
+  - that all entities that are present in B and not marked as deleted replace those in A that already exist with the same id, or are added to A. 
+  - that all entities marked as deleted in B are marked as deleted in A.
+  - that all entities that exist in A but are not in B are marked as deleted.
+
+While the operation is in progress any writes to A should be stored and only applied after the merge has completed. Any writes to B MUST be rejected.
+
+Support for this operation MAY be provided by a server. If the server doesn't offer the merge service then it should return a operation not supported response when a client attempts to POST the merge operation resource.
+
+<pre>
+
+  /stores/{store-name}/datasets/{dataset-name}/merge: 
+    post: 
+     tags:
+        - "Management"
+      summary: Merge dataset
+      description: "Merge all entities from specified dataset into this one, delete any in this one that are not in the other."
+      operationId: "merge-dataset"
+      produces:
+        - "application/json"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "store name"
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "dataset name"
+        required: true
+        type: "string"
+      - name: "body"
+        in: "body"
+        description: "Merge operation parameters"
+        required: true
+        schema:
+          $ref: "#/definitions/MergeOperation"
+      responses:
+        200:
+          description: "successful operation - dataset updated"
+          schema:
+            $ref: "#/definitions/Dataset"
+        400:
+          description: "Occurs when the dataset passed in the body is invalid or missing"
+
+</pre>
+
+The following example shows how to update the entity of a dataset with a PUT request.
+
+<pre>
+
+HOST https://wod-api.example.com
+PUT /stores/store1/datasets/dataset1
+
+{ 
+  "name" : "dataset1", 
+  "entity" : {
+    "@context": {
+        "namespaces" : {
+            "test" : "http://example.org/"
+        }
+    },
+    "@id"       : "http://data.webofdata.io/publishing/store1/people",
+    "test:name" : "This dataset is very important"      
+  }
+}  
+
+Response =>
+
+200 OK
+{ 
+  "name" : "dataset1", 
+  "entity" : {
+    "@context": {
+        "namespaces" : {
+            "ns1" : "http://example.org/"
+        }
+    },
+    "@id"       : "http://data.webofdata.io/publishing/store1/people",
+    "ns1:name" : "This dataset is very important"      
+  }
+}   
+ 
+</pre>
+
+
 ### Operation Delete Dataset
 
 A request to delete a dataset MUST delete the dataset entity and all contained entities.
@@ -1139,7 +1235,7 @@ DELETE /stores/store1/datasets/dataset1
 
 A dataset contains entities. The complete set of entities in a dataset can be retrieved with the 'get-entities' operation. Responses to this request are free to stream all entities or return pages of entities and a link to the next page. 
 
-This endpoint can also be used to retrieve a specific entity from the dataset. A specific entity can be retrieved by providing an id query parameter whose value is the URI id of the entity.
+This endpoint can also be used to retrieve a specific entity from the dataset. A specific entity can be retrieved by providing an identifier as a query parameter whose value is the URI identifier of the entity.
 
 <pre>
 
@@ -1163,15 +1259,19 @@ This endpoint can also be used to retrieve a specific entity from the dataset. A
         description: "dataset name"
         required: true
         type: "string"
+      - name: "nextdata"
+        in: "query"
+        description: "To be used with values provided by the x-wod-next-data header value. If omitted it indicates that the client wishes to retrieve all data." 
       - name: "id"
         in: "query"
-        description: "If provided it must be either a full uri or curie and it will limit the number of entities to either 0 or 1, depending if an entity with that id exists in the dataset"
+        description: "If provided it must be either a full uri or curie and it will limit the number of entities to either 0 or 1, depending if an entity with that id exists in the dataset. Cannot be used with the 'nextdata' parameter."
+        type: "string"
       responses:
         200:
           description: "successful operation"
           headers:
-            x-wod-next-page:
-              description: "if present indicates to the client that there is more data to be retreived using the link in the value of this header. The response type of following a next page link is the same as when making the initial request."
+            x-wod-next-data:
+              description: "if present indicates to the client that there is more data to be retreived. Use the value of this header as the value of the 'nextdata' query parameter to retreive more data."
               type: "string"
           schema:
             type: "array"
@@ -1213,7 +1313,9 @@ Response =>
 
 The store entities operation lets a client send a collection of entity objects that the server MUST either add, update or delete in the dataset specified.
 
-If the entity specified exists then the current representation must be replaced with the new one. If the entity does not exist a new one is added. If the entity provided is marked with the '@deleted' property (with a value of 'true') then the entity must be deleted from the dataset. 
+If the entity specified exists then the current representation must be replaced with the new one. If the entity does not exist a new one is added. If the entity provided is marked with the '@deleted' property (with a value of 'true') then the entity must be deleted from the dataset. If the entity exists in the dataset and is identical to the one being provided the server MAY choose not to update it and not to mark it as having changed.
+
+If entities are deleted the server must keep track of this so that the entity can appear in a get-changes response. When the entity appears in this response it MUST be marked as deleted.
 
 <pre>
 
@@ -1256,11 +1358,41 @@ The following example shows how to upload several entities to be stored in a dat
 </pre>
 
 
-### Operation Get Partitions
+### Operation Delete Entities
 
-To allow the entities of a dataset to be fetched in parallel a dataset MAY offer the 'get-partitions' endpoint. This endpoint returns a list of links that can then be used to consume the dataset in parallel. The mechanism for retrieving a single partition is identical to that of making a call to the 'get-entities' operation.
+The delete entities operation lets a client request that all entities in a dataset are deleted. The dataset itself is not deleted, neither is the dataset entity object. A request for changes to this dataset would return all entities, and they would be marked as '@deleted' = true.
 
-The 'id' parameter is not valid when requesting partitions or resolving partitions links.
+<pre>
+  /stores/{store-name}/datasets/{dataset-name}/entities:
+    delete:
+        tags:
+          - "Management"
+        summary: "Delete all entities in the dataset"
+        description: "Deletes all entities in the dataset but not the dataset itself"
+        operationId: "delete-entities"
+        produces:
+          - "application/json"
+        parameters:
+          - name: "store-name"
+            in: "path"
+            description: "store name"
+            required: true
+            type: "string"
+          - name: "dataset-name"
+            in: "path"
+            description: "dataset name"
+            required: true
+            type: "string"
+        responses:
+          200:
+            description: "successful operation"
+</pre>
+
+### Operation Get Entities Partitions
+
+To allow the entities of a dataset to be fetched in parallel a dataset MAY offer the 'get-partitions' endpoint. This endpoint returns a list of tokens that can then be used to consume the dataset in parallel. The mechanism for retrieving a single partition is identical to that of making a call to the 'get-entities' operation except that the 'nextdata' query parameter is either a value from the result of calling 'get-emtities-partitions'  or the x-wod-next-data header in a response from 'get-entitites'.
+
+
 
 
 ### Operation Get Transactions
@@ -1283,9 +1415,9 @@ Allowing applications to collect and download datasets incrementally allows them
 
 ### Operation: Get Changes
 
-The 'get-changes' operation exposes a list of the entities that have changed in the specified dataset.
+The 'get-changes' operation exposes a list of the entities that have changed in the specified dataset. Complete entity representation MUST be delivered back to the client.
 
-This operation exposes the changes that occur to a dataset. A server MUST return the changes in the order in which they occurred.
+This operation exposes the changes that occur to a dataset. Even though an entity may have changed many times the server is not required to return all these unique states. The server is only required to return the latest representation of the entity.
 
 <pre>
 
@@ -1309,6 +1441,10 @@ This operation exposes the changes that occur to a dataset. A server MUST return
         description: "dataset name."
         required: true
         type: "string"
+      - name: "nextdata"
+        in: "query"
+        description: "If provided it is used by the server to compute which are the next entities to return. If omitted indicates that the client wishes to receive all changes."
+        type: "string"
       responses:
         200:
           description: "successful operation"
@@ -1319,7 +1455,7 @@ This operation exposes the changes that occur to a dataset. A server MUST return
               description: if present indicates that a full sync is required. This means that all local data should be deleted and the new data arriving put in its place.
               type: boolean
             x-wod-next-data:
-              description: The url that should be used the next time the client wishes to retrieve changes.
+              description: A token that should be the value of the 'nextdata' query parameter the next time the client requests data.
               type: string
               required: true
           schema:
@@ -1327,13 +1463,13 @@ This operation exposes the changes that occur to a dataset. A server MUST return
             items:
               $ref: "#/definitions/Entity"
         400:
-          description: "Invalid since token"
+          description: "Invalid nextdata token"
+        404:
+          description: "Store or dataset not found"
 
 </pre>
 
-The following example describes an interaction between a client and a server. The client requests changes, updates a local store or system, stores the x-wod-next-data link, and then, later on, makes a get request to the stored x-wod-next-data URL. 
-
-The headers in the 
+The following example describes an interaction between a client and a server. The client requests changes, updates a local store or system with the new entity representations, stores the x-wod-next-data token, and then, later on, makes a get request that uses the stored x-wod-next-data token. 
 
 #### X-WOD-FULL-SYNC HEADER
 
@@ -1345,13 +1481,11 @@ The response can include a `X-WOD-FULL-SYNC` header. The header can have one of 
 
   - true
 
-    Meaning that the client should delete all local data and replace it with what it receives. This value is true when a client first requests changes, and can also occur when the dataset on the server is deleted and repopulated. It MUST only appear in the first response, even if the data to repopulate is made available over many requests.
+    Meaning that the client should delete all local data and replace it with what it receives. This value is true when a client first requests changes, and can also occur when the dataset on the server is deleted and re-populated. It MUST only appear in the first response, even if the data to re-populate is made available over many requests.
     
-##### X-WOD-DSP-NEXT-DATA
+##### X-WOD-NEXT-DATA
 
-The `X-WOD-DSP-NEXT-DATA` header MUST contain a URI that will return the same kind of response as described in the 'get-changes' operation. 
-
-This header can be used by servers to split the changes over several pages, and is used to indicate to the client the URL to be used the next time the client wishes to get changes. 
+The `X-WOD-NEXT-DATA` header MUST contain a token that can be passed to a subsequent call to 'get-changes' as the value of the 'nextdata' query parameter. 
 
 ### Deleted Subject Representations
 
@@ -1376,32 +1510,34 @@ A client is assumed to be storing, and keeping in sync, a local copy of a remote
 
 If the client has not yet synchronised the dataset then it must first use the 'get-changes' operation to obtain the initial data. 
 
-The response to this request will be an array of entities and a header, 'X-WOD-NEXT-DATA', that contains a link to more of the changes. The client stores the entities provided in the array into a local dataset. 
+The response to this request will be an array of entities and a header, 'X-WOD-NEXT-DATA', that contains a token that MUST be used as the value of the 'nextdata' query paramter in a subsequent request. The client stores the entities provided in the array into a local dataset. 
 
 For each entity the client deletes the local representation and replaces it with the new one provided. If the entity provided is marked as deleted then the client must delete the local copy. Clients should not update local entities unless there has been an actual change.
 
-The client MUST store the value of `X-WOD-NEXT-DATA` header value link after it has committed the changes indicated by the entities in the response. 
+The client MUST store the value of `X-WOD-NEXT-DATA` header value only after it has committed the changes indicated by the entities in the response. 
 
-A client can then keep making calls and then storing the URL in the 'X-WOD-NEXT-DATA' header until no more data is available. 
+A client can then keep making calls and then storing the tpken in the 'X-WOD-NEXT-DATA' header until no more data is available. 
 
-At subsequent further intervals a client should use the stored `X-WOD-NEXT-DATA` link to determine if there are any changes to the dataset. 
+At subsequent further intervals a client should use the stored `X-WOD-NEXT-DATA` token and a requst to 'get-changes' to determine if there are any changes to the dataset. 
 
-Clients are free to use their own schedule for following the `X-WOD-NEXT-DATA` link.
+Clients are free to use their own schedule for calling 'get-changes'.
 
 When a client receives the `X-WOD-FULL-SYNC` header and it has a value of `true` then the client MUST delete all content from the local dataset and replace it with what comes from the server.
 
 ### Operation Get Change Partitions
 
-To allow the changes to a dataset to be processed in parallel a dataset MAY offer the `get-changes-partitions` endpoint. This endpoint returns a list of links that can then be used to consume the changes to a dataset in parallel. It also returns a header of `X-WOD-NEXT-PARTITIONS`. 
+To allow the changes to a dataset to be processed in parallel a dataset MAY offer the `get-changes-partitions` endpoint. This endpoint returns a list of links that can then be used to consume the changes to a dataset in parallel. 
 
-A client calling this operation receives N links to change data. Each of those links resolves to a response that is the same as a call to the 'get-changes'
+A client calling this operation receives N tokens. Each token can be used as an initial 'nextdata' parameter to 'get-changes'.  
 
 
-#### WebSocket Semantics
 
-As well as the HTTP semantics described above the following websocket variant is also described. This variant is designed to better support real time push of subject changes. 
 
-The WebSocket variant of the protocol sees a client connect to a websocket endpoint provided by the server. One endpoint is provided for each dataset. When the client connects is provides the since parameter and then receives the changes. 
+## WebSocket Service Binding
+
+As well as the HTTP semantics the following websocket variant for listening for changes is also described. This variant is designed to better support real time push of entity changes. 
+
+The WebSocket variant of the protocol sees a client connect to a websocket endpoint provided by the server. One endpoint is provided for each dataset. When the client connects is provides the 'nextdata' parameter and then receives entities that have changed and occasional progress objects. A progress object MUST contain a property called X-WOD-NEXT-DATA whose value can be stored and used as the request parameter the next time the socket connection needs to be reopened. 
 
 <pre>
 
@@ -1409,17 +1545,15 @@ The WebSocket variant of the protocol sees a client connect to a websocket endpo
 
 </pre>
 
-## Web Of Data Query Protocol
+The client MUST not write to the socket. The client reads from the server and receives either an entity representation (like those provided in the 'get-changes' response) or a JSON object that contains a 
 
-The WebOfData Query Protocol (WOD-QP). WOD-QP is designed to facilitate the retrieval of the representation of a given subject, and the retrieval of those subjects that reference (are connected to), a given subject.
+## Query Operations
 
-The protocol is intended to work both in controlled (secure,closed networks) and open environments (on the web). It seperates the use of URIs as identifiers from the use of URLs as references to resolvable resource representations.
+The WebOfData Query operations are designed to facilitate the retrieval of the representation of a given subject, and the retrieval of those subjects that reference (are connected to), a given subject.
+
+The protocol is intended to work both in controlled (secure, closed networks) and open environments (on the web). It seperates the use of URIs as identifiers from the use of URLs as references to resolvable resource representations.
 
 ### Protocol
-
-TODO: introduce a service document with rel-types that provide a better quality REST interface.
-
-A server offering the WOD-QP is a web application that exposes the following endpoints:
 
 <pre>
 GET /query?subject=&lt;uri&gt; =&gt; returns a representation of the subject.
@@ -1435,23 +1569,9 @@ GET /query?connected-to=&lt;uri&gt;?by=&lt;uri&gt; =&gt; returns a list of subje
 
 TODO: Add some examples here. Add support for paging. Add swagger definitions.
 
-### Namespace Extensions
+### Linked Data URL Resolution
 
-Semantic JSON utilises CURIES as a way to provide more consise and human readable representations. A WOD server MAY choose to use CURIEs when exposing data via the "__context" property. In the cases where CURIES are used the server can disclose the CURIE prefix expansions.
-
-A WOD server MUST expose the following endpoints:
-
-<pre>
-GET /namespaces returns a JSON object that defines all of the CURIE prefix expansions.
-
-A server MAY choose to return an empty document if it doesn't support CURIE expansion in the query requests.
-</pre>
-
-A client can use a CURIE when querying. The curie is first resolved against the publishing namespaces and then the internal namespaces. 
-
-### Linked Data URL Resolution Semantics
-
-Follow-your-nose semantics works by a web endpoint capturing requests for subject representations and re-writing and re-routing them to the WOD-QP server. e.g:
+Follow-your-nose semantics works by a web endpoint capturing requests for subject representations and re-writing and re-routing them to the WoD server query endpoint. The following example shows how this should work:
 
 <pre>
 http://data.webofdata.io/people/gra gets re-written as 
@@ -1459,14 +1579,23 @@ http://data.webofdata.io/people/gra gets re-written as
 http://api.webofdata.io/query?connected=http://data.webofdata.io/people/gra
 </pre>
 
+An example NGINX config and docker image are provided at https://github.com/webofdata/linked-data.
+
+## GRPC Service Binding
+
+As well as the HTTP and websocket bindings of the protocol this section defines the GRPC version of the service. 
+
+It should be noted that the entity data model is not represented as a GRPC model. The GRPC binding is defined in terms of bytes that contain the JSON entity objects. 
+
+Clients in specific language bindings are responsible for using the bytes data as JSON.
 
 ## Conformance
 
 It is not possible to define conformance for a data model, conformance can only be defined in terms of observable actions and responses. 
 
-The automated conformance test suite can be run against any WoD node that claims to implements the protocol and serialisation parts of this specification. 
+The automated conformance test suite can be run against any WoD node that claims to implement the protocol and serialisation parts of this specification. 
 
-The conformance client can be found online at http://github.com/webofdata/conformance. It includes source code, instructions for running the conformance tests and also a link to a pre-built docker image.
+The conformance client can be found online at http://github.com/webofdata/conformance. It includes source code, instructions for running the conformance tests.
 
 ## References
 
