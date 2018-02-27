@@ -11,6 +11,23 @@ schemes:
 - "https"
 paths:
 
+  /info:
+    get:
+      tags:
+        - "Management"
+      summary: "Returns information about this service instance"
+      description: "Returns information about this service instance, including an entity which conveys on this service instance a unique identifier"
+      operationId: "get-service-info"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/ServiceInfo"
+
   /stores:
     get:
       tags:
@@ -33,11 +50,12 @@ paths:
             type: "array"
             items:
               $ref: "#/definitions/Store"
+
     post:
       tags:
         - "Management"
       summary: Create a new store
-      description: "Creates a new store with the name provided iff this name is not already taken. If no name is provided then the server MUST generate one"
+      description: "Creates a new store with the name provided if and only if this name is not already in use. If no name is provided then the server MUST generate one"
       operationId: "create-store"
       produces:
         - "application/json"
@@ -76,12 +94,14 @@ paths:
           description: "successful operation"
           schema:
             $ref: "#/definitions/Store"
+        404:
+          description: "store not found"
 
     delete:
       tags:
         - "Management"
       summary: delete the named store, and all datasets
-      description: deletes a the store or returns a 400 bad request if no store of the name provided exists
+      description: deletes the named store or returns a 404 not found if no store of the name provided exists
       operationId: delete-store
       parameters:
         - name: "store-name"
@@ -92,6 +112,8 @@ paths:
       responses:
         200:
           description: "successful operation"
+        404:
+          description: "store not found"
 
     put:
       tags:
@@ -110,12 +132,14 @@ paths:
           description: "New representation of the store entity"
           required: true
           schema:
-            $ref: "#/definitions/Store"
+            $ref: "#/definitions/Entity"
       responses:
         200:
           description: "successful operation"
           schema:
             $ref: "#/definitions/Store"
+        404:
+          description: "store not found"
 
   /stores/{store-name}/query:
     get:
@@ -204,14 +228,14 @@ paths:
             type: "array"
             items:
               $ref: "#/definitions/Dataset"
-        400:
-          description: "Invalid store name"
+        404:
+          description: "Store not found"
 
     post:
       tags:
         - "Management"
       summary: Create a new dataset
-      description: "Creates a new dataset with the name provided iff this name is not already taken. If no name is provided the server MUST generate one."
+      description: "Creates a new dataset with the name provided if and only if this name is not already taken in this named store. If no name is provided the server MUST generate one."
       operationId: "create-dataset"
       produces:
         - "application/json"
@@ -232,6 +256,8 @@ paths:
           description: "successful operation - dataset created"
           schema:
             $ref: "#/definitions/Dataset"
+        404:
+          description: "Store not found"
         400:
           description: "Occurs when the dataset passed in the body is invalid or missing"
 
@@ -239,8 +265,8 @@ paths:
     get:
       tags:
         - "Management"
-      summary: "gets a list of datasets in the named store"
-      description: "returns a single store object or 404 if the store does not exist"
+      summary: "Gets the datasets in the named store"
+      description: "Returns a list of dataset objects or 404 if the store does not exist"
       operationId: "get-dataset"
       produces:
         - "application/json"
@@ -287,7 +313,7 @@ paths:
         description: "New dataset entity data"
         required: true
         schema:
-          $ref: "#/definitions/Dataset"
+          $ref: "#/definitions/Entity"
       responses:
         200:
           description: "successful operation - dataset updated"
@@ -295,6 +321,8 @@ paths:
             $ref: "#/definitions/Dataset"
         400:
           description: "Occurs when the dataset passed in the body is invalid or missing"
+        404:
+          description: "Store or dataset not found"
 
     delete:
       tags:
@@ -429,6 +457,10 @@ paths:
           in: "query"
           type: "string"
           description: "If provided it must be either a full uri or curie and it will limit the number of entities to either 0 or 1, depending if an entity with that id exists in the dataset"
+        - name: "nextdata"
+          in: "query"
+          type: "string"
+          description: "token used to retrieve more data. Tokens are provided as a result to calling get-entitie-partitions or as a value in the WOD-NEXT-DATA response header."
       responses:
         200:
           description: "successful operation"
@@ -539,6 +571,16 @@ paths:
 
 definitions:
 
+  ServiceInfo:
+    type: "object"
+    properties:
+      "name":
+        "type": "string"
+      "baseurl":
+        "type": "string"
+      "entity":
+        "$ref": "#/definitions/Entity"
+
   Store:
     type: "object"
     properties:
@@ -604,6 +646,14 @@ definitions:
           $ref: "#/definitions/Entity"
 
   TransactionInfo:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+      status:
+        type: "string"
+
+  MergeOperation:
     type: "object"
     properties:
       id:

@@ -13,13 +13,13 @@ Like HTML and HTTP did for machine to human communication, Web of Data (WoD) aim
 
 Web of Data defines a protocol, data model, and data representation format for publishing, sharing and connecting data on the web. It is intended to be easy to implement and work at a level of generality that is widely applicable.
 
-The WoD data model has at it's core the notion of an entity. An entity has identity in the form of a URI. An entity also has properties whose 'names' or 'keys' are also URIs. The use of URIs to identify things and name properties provides a powerful, web scale approach to naming. The values of these properties can either be literals, based on XML schema data types, or complex types such as arrays, or another entity. Finally, there is a special reference type. This reference type has a value that is a URI. This URI references another entity to create a graph of entities that can span the web. 
+The WoD data model has at it's core the notion of an entity. An entity has identity in the form of a URI. An entity also has properties whose 'names' or 'keys' are also URIs. The use of URIs to identify things and name properties provides a powerful, web scale approach to naming. The values of these properties can either be literals, based on XML schema data types, or complex types such as arrays, or another entity. Finally, there is a special reference type. This reference type has a value that is a URI. This URI references another entity, allowing the creation of a graph of entities that can span the web. 
 
 The protocol is designed to facilitate the sharing, updating, creating and publishing of collections of entities, the retrieval of a given data entity, and the navigation of connected entities. It is expected that collections of entities can exists in databases, existing applications and dedicated WoD data stores. All kinds of applications can implement and support the protocol in meaningful ways, allowing a vast array of client applications to easily consume and use data from around the web. 
 
 The WoD representation format uses JSON with a few well defined keys that support the use of URIs as identifiers and property names. 
 
-Finally, WoD defines a protocol for synchronising datasets. This allows clients to collect and keep in sync core data from around the web to offer new services and provide guaranteed quality of service.
+Finally, WoD defines a protocol for synchronising datasets. This allows clients to collect and synchronise data from around the web; to offer new data services and provide guaranteed quality of service to application and API users.
 
 ## Background
 
@@ -43,15 +43,15 @@ The WoD APIs are refinement of things like OData, Linked Data Fragments and SDSh
 
 WebOfData defines a data model, a JSON serialistion for the data model, a data access protocol (Query), a data sharing protocol (Synchronisation) and a data management protocol (CRUD). Compliant implementations can choose which of the APIs they support, but must adhere to the rules and semantics of the data model and serialisation definition. 
 
-We talk about the of implementions of these protocols and adherence to the serialisation representations to be WoD nodes. A WoD node implementation can 
+Software that implemention these protocols and adheres to the serialisation representations are called WoD nodes. The potential set of services that can connect these WoD nodes together is what makes the WoD protocol exciting for the web at large and organisations looking to get control of their data. 
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 
 ## Data Model Definition
 
-The WebOfData data model can be thought of an Entity-Graph model. Entities are complex objects of keys with values. Where keys are URIs and values can be literals, lists or another entity. In addition there is a reference value type that points to (references) another entity. This allows entities to be connected together in a graph at global scale. 
+The WebOfData data model can be thought of an Entity-Graph model. Entities are complex objects of keys with values. Where keys are URIs and values can be literals, lists of values, or an entity. In addition there is a reference value type that points to (references) another entity. This allows entities to be connected together in a graph at global scale. 
 
-The value of a reference type is a URI and not some local internal identifier. The power of this is that it can be resolved globally. It can be used to lookup the related entity from one or more API endpoints. WoD does not define where a client can resolve an reference value, but does define the capabilities that a WoD data access endpoint should support.
+The value of a reference type is a URI and not some local internal identifier. The power of this is that it can be resolved globally. It can be used to lookup the related entity from one or more API endpoints. WoD does not define where a client can resolve a reference value, but does define the capabilities that a WoD query endpoint should support.
 
 Given that each entity is only a partial representation of a subject the data model also defines how to merge two entities. (The algorithm can be applied recursively to merge multiple representations.)
 
@@ -110,18 +110,19 @@ One of the key things to note is that a root-entity must have a id. Descendent e
 
 A dataset is a collection of entities. It provides a container where entities can be managed (created, deleted, updated, located). 
 
-Datasets can contain as most 1 entity with any given subject identifier. This means that the subject identifier is the unique key for an entity in a dataset. But, an entity with the same subject identifier can exist in other datasets.
+Datasets can contain as most one entity with any given subject identifier. This means that the subject identifier is the unique key for an entity in a dataset. But, an entity with the same subject identifier can exist in other datasets.
 
 Splitting the store into datasets allows for more than one representation of the same subject (an entity with the same subject identifier as another entity) to exist in a single store. 
 
-When resolving a request for a subject identifier against a store then by default the lookup is across all datasets. In this case it is possible for more than one entity with the same subject identifier to be located. When this occurs the entity representations should be merged as described below. A client can request that lookup only occurs in the context of one dataset. In this case, due to the fact that within a dataset there is exaclty 0 or 1 entity with a given subject identifier, at most 1 entity will be located. 
+By default when resolving a request for a subject identifier against a store then the lookup is across all datasets. In this case it is possible for more than one entity with the same subject identifier to be located. When this occurs the entity representations should be merged as described below. A client can request that lookup only occurs in the context of one dataset. In this case, due to the fact that within a dataset there is exaclty zero or one entity with a given subject identifier, at most one entity will be located. 
 
 Formally, and in terms of the entity definition:
 
 <pre>
 
-dataset  := { id, entities }
-entities := [] | entity, entities
+dataset        := { id, dataset-entity, entities }
+dataset-entity := entity
+entities       := [] | entity, entities
 
 </pre>
 
@@ -131,14 +132,15 @@ An entity store is a collection of datasets. The store is defined as follows:
 
 <pre>
 
-store    := { id, datasets }
-datasets := [] | dataset, datasets
+store        := { id, store-entity, datasets }
+store-entity := entity
+datasets     := [] | dataset, datasets
 
 </pre>
 
 ### Merging Entities
 
-A client can (potentially) retrieve a partial subject representation for the same subject from many WoD service endpoints. An application or server may decide that even though the subject identifiers are different that the entities represent the same subject, and entities are allowed to express a belief that they are the same as one or more other subjects using the "wod:sameas" property. In all of these cases two or more entities are merged to create a more unified representation.  
+A client can (potentially) retrieve a partial subject representation for the same subject from many WoD service endpoints. An application or server may decide that even though the subject identifiers are different that the entities represent the same subject. In addition, entities are allowed to express a belief that they are the same as one or more other subjects using the "wod:sameas" property. In all of these cases two or more entities are merged to create a more unified representation. We say 'more unified' as there is by definition never a complete representation of a subject.
 
 The rules for merging two entity representations of the same subject are defined below. If more than two entities need to be merged, then the algorithm should be applied on the first two entities, then on the resulting merged entity and the next entity to be merged; and so on.
  
@@ -161,9 +163,9 @@ The above merging semantics define the formalism for merging two entities with t
 
 This behaviour is optional in that a server MAY offer this capability, and even in the case when it does then the client MUST specifically request it.
 
-Given a subject identifier, find the entity that corresponds to that URI. Locate the 'wod:sameas' property and for each subject-ref value in the array look up and merge that entity according to the rules above.
+Given a subject identifier, find the entity that corresponds to that URI. Locate the 'wod:sameas' property and for each 'subject-ref' value in the array look up and merge that entity according to the rules above.
 
-Recursively apply this rule to each entity references by a wod:sameas value, but only process each entity once.
+Recursively apply this rule to each entity referenced by a wod:sameas value, but only process each entity once.
 
 ## Data Model JSON Serialisation
 
@@ -196,7 +198,7 @@ or
 
 <pre>
   {
-    "@context" : { "people" : "http://data.webofdata.io/people/" } ,
+    "@context" : { "namespaces" : { "people" : "http://data.webofdata.io/people/" } } ,
     "@id" : "people:gra",
     ... 
   } 
@@ -284,15 +286,15 @@ An example with properties as IRIs. Both the 'foaf:name' and 'http://data.exampl
 
 #### Context Rules
 
-All property names, '@id' property values, and subject references values are full URIs. However, to simplify documents and avoid repeating long URI strings these values can be specified either as CURIEs or as simple values that are resolved against a context.
+All property names, '@id' property values, and subject reference values are full URIs. However, to simplify documents and avoid repeating long URI strings these values can be specified either as CURIEs or as simple values that are resolved against a base prefix defined in a context.
 
-When a CURIE or simple value is used then they must be resolved against some context. A document collection or a single document can describe the context in which CURIEs and simple values are expanded.
+When a CURIE or simple value is used then they must be resolved against a context. A document collection or a single document can describe the context in which CURIEs and simple values are expanded.
 
 A context is declared using the special '@context' property. The value of the '@context' property is a JSON object with two keys. The allowed keys are "namespaces" and "datatypes". 
 
 The "namespaces" key has a value that is a JSON object. The keys in this object correspond to the first part of a CURIE and the value (which must be a string) is the expansion.
 
-The "datatypes" key is used to define the datatypes of values based on their key. In general the datatypes are infered from the JSON data type. However, JSON data types are limited and this mechanism allows for a greater range of basic types, via XML Schema, and also for extension types to be introduced.
+The "datatypes" key is used to define the datatypes of values based on their key. In general the datatypes are inferred from the JSON data type. However, JSON data types are limited and this mechanism allows for a greater range of basic types, via XML Schema datatypes, and also for extension types to be introduced.
 
 If a datatype is defined for a key then the value of that property MUST be either a string or a list of strings. 
 
@@ -344,7 +346,7 @@ In both examples the 'name' property is expanded to 'http://foaf.org/schema/name
 </pre>
 
 
-Contexts can be defined as part of each entity serialisation, or when serialising a list of entities as the first object. It is allowed to define a context as the first entity of a list and as part of any following root entity. If there is both an array level context and an object level context, then any keys that are defined in the object take precedence.
+Contexts can be defined as part of each entity serialisation, or when serialising a list of entities as the first object. It is allowed to define a context as the first entity of a list and as part of any following root entity. If there is both an array level context and an object level context any keys that are redefined in the object take precedence.
 
 If the context is defined as the first object in an array then the value of the "@id" property MUST be "@context". 
 
@@ -440,7 +442,7 @@ The following form is allowed:
 
 ## Web of Data Protocol
 
-The WoD protocol consists of a service definition and the related semantics for each operation. The operations are described in prose and then formalised using swagger. The protocol is split into three distinct areas; data management, data query, and data synchronisation. 
+The WoD protocol consists of a service definition and the related semantics for each operation. The operations are described in prose and swagger. The protocol is split into three distinct areas; data management, data synchronisation, and data query. 
 
 ## Common Definitions
 
@@ -449,6 +451,16 @@ The following type definitions are used and referenced throughout the protocol d
 <pre>
 
 definitions:
+
+  ServiceInfo:
+    type: "object"
+    properties:
+      "name":
+        "type": "string"
+      "baseurl":
+        "type": "string"
+      "entity":
+        "$ref": "#/definitions/Entity"
 
   Store:
     type: "object"
@@ -523,9 +535,48 @@ definitions:
 The data management part of the protocol defines operations for the creation and deletion of stores and datasets, and the updating of entities within a dataset. It also defines operations for creating and monitoring transactions that span datasets.
 
 
-### Operation Get Service 
+### Operation Get Service Info
 
-This operation returns information about the service endpoint itself. 
+This operation returns information about the service endpoint itself. The response MUST contain a service entity for this endpoint. The entity returned as part of the ServiceInfo response is the subject identifier for the service endpoint.   
+
+<pre>
+
+  /info:
+    get:
+      tags:
+        - "Management"
+      summary: "Returns information about this service instance"
+      description: "Returns information about this service instance, including an entity which conveys on this service instance a unique identifier"
+      operationId: "get-service-info"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/ServiceInfo"
+
+</pre>
+
+The following example shows an example request and response:
+
+<pre>
+
+> GET /info HTTP/1.1
+> Host: api.webofdata.io
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+< Content-Length: 71
+< 
+{  
+   "name"   : "node1",
+   "entity" : { "@id" : "http://data.webofdata.io/services/demonode" }
+}
+
+</pre>
 
 ### Operation Get Stores
 
@@ -533,7 +584,7 @@ This operation returns a list of stores being managed by the WoD node. The list 
 
 <pre>
 
-/stores:
+  /stores:
     get:
       tags:
         - "Management"
@@ -562,21 +613,26 @@ The following example shows a request that returns three stores.
 
 <pre>
 
-HOST https://wod-api.example.com
-GET /stores
-
+> GET /stores HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+< 
 [
-  { "name" : "store1", 
+  { 
+    "name" : "store1", 
     "entity" : {
       "@id" : "http://data.webofdata.io/publishing/store1"      
     }
   },
-  { "name" : "store2", 
+  { 
+    "name" : "store2", 
     "entity" : {
         "@id" : "http://data.webofdata.io/publishing/store2"      
     }
   },
-  { "name" : "store3", 
+  { 
+    "name" : "store3", 
     "entity" : {
         "@id" : "http://data.webofdata.io/publishing/store3"      
     }
@@ -589,11 +645,14 @@ The following example shows a request that returns just one store. Only one stor
 
 <pre>
 
-HOST https://wod-api.example.com
-GET /stores?id=http://data.webofdata.io/publishing/store1
-
+> GET /stores?id=http://data.webofdata.io/publishing/store1 HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+<
 [
-  { "name" : "store1", 
+  { 
+    "name" : "store1", 
     "entity" : {
       "@id" : "http://data.webofdata.io/publishing/store1"      
     }
@@ -619,17 +678,17 @@ The operation is defined as follows:
       tags:
         - "Management"
       summary: Create a new store
-      description: "Creates a new store with the name provided, if and only f this name is not already taken. If no name is provided then the server MUST generate one"
+      description: "Creates a new store with the name provided if and only if this name is not already in use. If no name is provided then the server MUST generate one"
       operationId: "create-store"
       produces:
         - "application/json"
       parameters:
-      - name: "body"
-        in: "body"
-        description: "Store to create"
-        required: true
-        schema:
-          $ref: "#/definitions/Store"
+        - name: "body"
+          in: "body"
+          description: "Store to create"
+          required: true
+          schema:
+            $ref: "#/definitions/Store"
       responses:
         201:
           description: "successful operation - store created"
@@ -644,19 +703,17 @@ The following example shows the create store request:
 
 <pre>
 
-HOST https://wod-api.example.com
-POST /stores
-
+> POST /stores HTTP/1.1
+> Host: api.webofdata.io
 { 
   "name" : "store1", 
   "entity" : {
     "@id" : "http://data.webofdata.io/publishing/store1"      
   }
 }  
-
-Response =>
-
-201 CREATED
+< HTTP/1.1 201 CREATED
+< Location: api.webofdata.io/stores/store1
+<
 { 
   "name" : "store1", 
   "entity" : {
@@ -670,20 +727,18 @@ The following example shows a valid create store request where the server genera
 
 <pre>
 
-HOST https://wod-api.example.com
-POST /stores
-
+> POST /stores HTTP/1.1
+> Host: api.webofdata.io
 { 
   "entity" : {
     "@id" : "http://data.webofdata.io/publishing/store1"      
   }
 }  
-
-Response =>
-
-201 CREATED
+< HTTP/1.1 201 CREATED
+< Location: api.webofdata.io/stores/somename
+<
 { 
-  "name" : "someguid", 
+  "name" : "somename", 
   "entity" : {
     "@id" : "http://data.webofdata.io/publishing/store1"      
   }
@@ -693,7 +748,7 @@ Response =>
 
 ### Operation Get Store
 
-The 'get-store' operation retreives the store entity using the local store name.
+The 'get-store' operation retrieves the store entity using the local store name.
 
 <pre>
 
@@ -716,7 +771,7 @@ The 'get-store' operation retreives the store entity using the local store name.
         200:
           description: "successful operation"
           schema:
-            $ref: "#/definitions/Store"      
+            $ref: "#/definitions/Store"
 
 </pre>
 
@@ -724,11 +779,14 @@ The following example shows the use of this operation:
 
 <pre>
 
-HOST https://wod-api.example.com
-GET /stores/store1
-
+> GET /stores/store1 HTTP/1.1
+> Host: api.webofdata.io
+> 
+< HTTP/1.1 200 OK
+<
 [
-  { "name" : "store1", 
+  { 
+    "name" : "store1", 
     "entity" : {
       "@id" : "http://data.webofdata.io/publishing/store1"      
     }
@@ -739,7 +797,7 @@ GET /stores/store1
 
 ### Operation Delete Store
 
-The 'delete-store' operation requests that the implementing WoD node deletes the store and all datasets and metadata associated with it. This include the entity for the store itself.
+The 'delete-store' operation requests that the implementing WoD node deletes the store  all datasets, and any metadata associated with it. This includes the entity for the store itself.
 
 <pre>
 
@@ -748,7 +806,7 @@ The 'delete-store' operation requests that the implementing WoD node deletes the
       tags:
         - "Management"
       summary: delete the named store, and all datasets
-      description: deletes the store or returns a 400 bad request if no store of the name provided exists
+      description: deletes the named store or returns a 404 not found if no store of the name provided exists
       operationId: delete-store
       parameters:
         - name: "store-name"
@@ -756,6 +814,11 @@ The 'delete-store' operation requests that the implementing WoD node deletes the
           description: "store name"
           required: true
           type: "string"
+      responses:
+        200:
+          description: "successful operation"
+        404:
+          description: "Store not found"
 
 </pre>
 
@@ -763,14 +826,11 @@ The following example shows how to request that a store is deleted.
 
 <pre>
 
-==== Request
-
-HOST https://wod-api.example.com
-DELETE /stores/store1
-
-==== Response
-
-200 OK
+> DELETE /stores/store1 HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+<
 
 </pre>
 
@@ -799,12 +859,15 @@ The entity for a store can be updated by using a POST request. The body of the r
           description: "New representation of the store entity"
           required: true
           schema:
-            $ref: "#/definitions/Store"
+            $ref: "#/definitions/Entity"
+            
       responses:
         200:
           description: "successful operation"
           schema:
-            $ref: "#/definitions/Store"      
+            $ref: "#/definitions/Store"
+        404:
+          description: "store not found"
 
 </pre>
 
@@ -812,25 +875,20 @@ The following example shows how to update the entity for a store. Note in this e
 
 <pre>
 
-HOST https://wod-api.example.com
-PUT /stores/store1
-
+> PUT /stores/store1 HTTP/1.1
+> Host: api.webofdata.io
+>
 { 
-  "name" : "store1", 
-  "entity" : {
-    "@context": {
-        "namespaces" : {
-            "test" : "http://example.org/"
-        }
-    },
-    "@id"       : "http://data.webofdata.io/publishing/newidentifier",
-    "test:name" : "This store is very important"      
-  }
+  "@context": {
+    "namespaces" : {
+      "test" : "http://example.org/"
+    }
+  },
+  "@id"       : "http://data.webofdata.io/publishing/newidentifier",
+  "test:name" : "This store is very important"      
 }  
-
-Response =>
-
-200 OK
+< HTTP/1.1 200 OK
+<
 { 
   "name" : "store1", 
   "entity" : {
@@ -846,10 +904,9 @@ Response =>
  
 </pre>
 
-
 ### Operation Create Dataset
 
-A dataset is part of a store, and acts as a container for entities. A dataset can be created by sending a POST request. 
+A dataset is part of a store and acts as a container for entities. A dataset can be created by sending a POST request. The entity in a dataset is the subject for that dataset and MUST be a valid WoD entity.
 
 <pre>
 
@@ -858,22 +915,29 @@ A dataset is part of a store, and acts as a container for entities. A dataset ca
       tags:
         - "Management"
       summary: Create a new dataset
-      description: "Creates a new dataset with the name provided iff this name is not already taken. If no name is provided the server MUST generate one."
+      description: "Creates a new dataset with the name provided if and only if this name is not already taken in this named store. If no name is provided the server MUST generate one."
       operationId: "create-dataset"
       produces:
         - "application/json"
       parameters:
-      - name: "body"
-        in: "body"
-        description: "Dataset to create"
-        required: true
-        schema:
-          $ref: "#/definitions/Dataset"
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+        - name: "body"
+          in: "body"
+          description: "Dataset to create"
+          required: true
+          schema:
+            $ref: "#/definitions/Dataset"
       responses:
         201:
           description: "successful operation - dataset created"
           schema:
             $ref: "#/definitions/Dataset"
+        404:
+          description: "Store not found"
         400:
           description: "Occurs when the dataset passed in the body is invalid or missing"
 
@@ -883,19 +947,19 @@ The following example shows how to create a dataset with a POST request.
 
 <pre>
 
-HOST https://wod-api.example.com
-POST /stores/store1/datasets
-
+> POST /stores/store1/datasets HTTP/1.1
+> Host: https://wod-api.example.com
+>
 { 
   "name" : "dataset1", 
   "entity" : {
     "@id" : "http://data.webofdata.io/publishing/store1/people"      
   }
 }  
-
-Response =>
-
-201 CREATED
+<
+< HTTP/1.1 201 CREATED
+< Location: /stores/store1/datasets/dataset1
+<
 { 
   "name" : "dataset1", 
   "entity" : {
@@ -907,7 +971,7 @@ Response =>
 
 ### Operation Get Datasets
 
-The operation ´get-datasets' returns a list of the datasets contained within the named store. 
+The operation `get-datasets` returns a list of the datasets contained in the named store. 
 
 <pre>
 
@@ -915,15 +979,15 @@ The operation ´get-datasets' returns a list of the datasets contained within th
     get:
       tags:
         - "Management"
-      summary: gets a list of datasets in the named store
-      description: returns a single store object or 404 if the store does not exist
-      operationId: get-datasets
+      summary: "Gets the datasets in the named store"
+      description: "Returns a list of dataset objects or 404 if the store does not exist"
+      operationId: "get-datasets"
       produces:
         - "application/json"
       parameters:
         - name: "store-name"
           in: "path"
-          description: "unique store name for this service endpoint"
+          description: "Unique store name for this service endpoint"
           required: true
           type: "string"
       responses:
@@ -933,21 +997,19 @@ The operation ´get-datasets' returns a list of the datasets contained within th
             type: "array"
             items:
               $ref: "#/definitions/Dataset"
-        400:
-          description: "Invalid store name"
+        404:
+          description: "Store not found"
 
 </pre>
 
-The following example shows how to retreive the datasets of a store.
+The following example shows how to retrieve the datasets of a store.
 
 <pre>
 
-HOST https://wod-api.example.com
-GET /stores/store1/datasets
-
-Response =>
-
-200 OK
+> GET /stores/store1/datasets HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
 [
   { 
    "name" : "dataset1", 
@@ -967,7 +1029,7 @@ Response =>
 
 ### Operation Get Dataset
 
-Get the entity for a given dataset.
+Get a specific dataset by name. 
 
 <pre>
 
@@ -975,9 +1037,9 @@ Get the entity for a given dataset.
     get:
       tags:
         - "Management"
-      summary: gets a list of datasets in the named store
-      description: returns a single store object or 404 if the store does not exist
-      operationId: get-datasets
+      summary: "Gets a list of datasets in the named store"
+      description: "Returns a single dataset object or 404 if the store or dataset does not exist"
+      operationId: "get-dataset"
       produces:
         - "application/json"
       parameters:
@@ -1001,16 +1063,15 @@ Get the entity for a given dataset.
 
 </pre>
 
-The following example shows how to retrieve a dataset entity.
+The following example shows how to retrieve a named dataset.
 
 <pre>
 
-HOST https://wod-api.example.com
-GET /stores/store1/datasets/dataset1
-
-Response =>
-
-200 OK
+> GET /stores/store1/datasets/dataset1 HTTP/1.1
+> Host: api.webofdata.io
+>
+<
+< HTTP/1.1 200 OK
 { 
   "name" : "dataset1", 
   "entity" : {
@@ -1028,7 +1089,7 @@ Updates the entity for the specified dataset.
 
   /stores/{store-name}/datasets/{dataset-name}:  
     put:
-     tags:
+      tags:
         - "Management"
       summary: Update dataset
       description: "Update the entity for the dataset"
@@ -1051,7 +1112,7 @@ Updates the entity for the specified dataset.
         description: "New dataset entity data"
         required: true
         schema:
-          $ref: "#/definitions/Dataset"
+          $ref: "#/definitions/Entity"
       responses:
         200:
           description: "successful operation - dataset updated"
@@ -1059,6 +1120,8 @@ Updates the entity for the specified dataset.
             $ref: "#/definitions/Dataset"
         400:
           description: "Occurs when the dataset passed in the body is invalid or missing"
+        404:
+          description: "Store or dataset not found"
 
 </pre>
 
@@ -1066,12 +1129,10 @@ The following example shows how to update the entity of a dataset with a PUT req
 
 <pre>
 
-HOST https://wod-api.example.com
-PUT /stores/store1/datasets/dataset1
-
+> PUT /stores/store1/datasets/dataset1 HTTP/1.1
+> Host: api.webofdata.io
+>
 { 
-  "name" : "dataset1", 
-  "entity" : {
     "@context": {
         "namespaces" : {
             "test" : "http://example.org/"
@@ -1079,12 +1140,9 @@ PUT /stores/store1/datasets/dataset1
     },
     "@id"       : "http://data.webofdata.io/publishing/store1/people",
     "test:name" : "This dataset is very important"      
-  }
 }  
-
-Response =>
-
-200 OK
+< HTTP/1.1 200 OK
+<
 { 
   "name" : "dataset1", 
   "entity" : {
@@ -1102,7 +1160,7 @@ Response =>
 
 ### Operation Merge Dataset
 
-Starts a merges operation from a named dataset (dataset B) into the one addressed (dataset A). The semantics of this operation requires:
+Starts a merges operation from a named dataset (specified in the POST body json) into the one addressed. The semantics of this operation requires:
   - that all entities that are present in B and not marked as deleted replace those in A that already exist with the same id, or are added to A. 
   - that all entities marked as deleted in B are marked as deleted in A.
   - that all entities that exist in A but are not in B are marked as deleted.
@@ -1317,6 +1375,10 @@ If the entity specified exists then the current representation must be replaced 
 
 If entities are deleted the server must keep track of this so that the entity can appear in a get-changes response. When the entity appears in this response it MUST be marked as deleted.
 
+If an entity contains a property called '@etag' then the server can use the value of this property to decide the specified entity has been modified since this representation was retreived. If this etag value does not match that of the one in the dataset then the update is rejected. 
+
+If the etag is omitted or the 'x-wod-ignoreetags' header has a value of 'true' then the server should ignore any etag value conflicts and apply the updates.
+
 <pre>
 
   /stores/{store-name}/datasets/{dataset-name}/entities:
@@ -1390,12 +1452,46 @@ The delete entities operation lets a client request that all entities in a datas
 
 ### Operation Get Entities Partitions
 
-To allow the entities of a dataset to be fetched in parallel a dataset MAY offer the 'get-partitions' endpoint. This endpoint returns a list of tokens that can then be used to consume the dataset in parallel. The mechanism for retrieving a single partition is identical to that of making a call to the 'get-entities' operation except that the 'nextdata' query parameter is either a value from the result of calling 'get-emtities-partitions'  or the x-wod-next-data header in a response from 'get-entitites'.
-
-
-
+To allow the entities of a dataset to be fetched in parallel a dataset MAY offer the 'get-partitions' endpoint. This endpoint returns a list of tokens that can then be used to consume the dataset in parallel. The mechanism for retrieving a single partition is identical to that of making a call to the 'get-entities' operation except that the 'nextdata' query parameter is either a value from the result of calling 'get-entities-partitions'  or the x-wod-next-data header in a response from 'get-entitites'.
 
 ### Operation Get Transactions
+
+The 'get-transactions' operation allows a client to fetch a list of transactions that the server knows about. The status query parameter to this operation is used by the client to control which transaction objects are returned.
+
+<pre>
+
+  /stores/{store-name}/transactions:
+    get:
+      tags:
+        - "Management"
+      summary: "Get entities in the dataset"
+      description: "Returns the entities in the specified dataset. Can also be used to locate a specific entity using the id query parameter."
+      operationId: "get-entities"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "store name"
+        required: true
+        type: "string"
+      - name: "status"
+        in: "query"
+        description: "." 
+        type: "string"
+      responses:
+        200:
+          description: "successful operation"
+          headers:
+            x-wod-next-data:
+              description: "if present indicates to the client that there is more data to be retreived. Use the value of this header as the value of the 'nextdata' query parameter to retreive more data."
+              type: "string"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Entity"
+
+</pre>
 
 
 ### Operation Create Transaction
@@ -1530,30 +1626,15 @@ To allow the changes to a dataset to be processed in parallel a dataset MAY offe
 
 A client calling this operation receives N tokens. Each token can be used as an initial 'nextdata' parameter to 'get-changes'.  
 
-
-
-
-## WebSocket Service Binding
-
-As well as the HTTP semantics the following websocket variant for listening for changes is also described. This variant is designed to better support real time push of entity changes. 
-
-The WebSocket variant of the protocol sees a client connect to a websocket endpoint provided by the server. One endpoint is provided for each dataset. When the client connects is provides the 'nextdata' parameter and then receives entities that have changed and occasional progress objects. A progress object MUST contain a property called X-WOD-NEXT-DATA whose value can be stored and used as the request parameter the next time the socket connection needs to be reopened. 
-
-<pre>
-
-/stores/{store-id}/dataset/{ds-id}/changes-web-socket
-
-</pre>
-
-The client MUST not write to the socket. The client reads from the server and receives either an entity representation (like those provided in the 'get-changes' response) or a JSON object that contains a 
-
 ## Query Operations
 
-The WebOfData Query operations are designed to facilitate the retrieval of the representation of a given subject, and the retrieval of those subjects that reference (are connected to), a given subject.
+The WebOfData Query operations are designed to facilitate the retrieval of the representation of a given entity via its subject identifier, and the retrieval of those entities that reference (are connected to), a given entity.
 
-The protocol is intended to work both in controlled (secure, closed networks) and open environments (on the web). It seperates the use of URIs as identifiers from the use of URLs as references to resolvable resource representations.
+The protocol is intended to work both in controlled (secure, closed networks) and open environments (on the web). It separates the use of URIs as identifiers from the use of URLs as references to resolvable resource representations.
 
-### Protocol
+Some WoD nodes are exposing datasets that require understanding by humans. These are often bootstrapping vocabularies or schema terms that are basic for other applications. They are also starting points for further traversal in the web of data. Some of the endpoints provide basic search features for locating key subjects.
+
+### Query Subject Operation
 
 <pre>
 GET /query?subject=&lt;uri&gt; =&gt; returns a representation of the subject.
@@ -1569,6 +1650,22 @@ GET /query?connected-to=&lt;uri&gt;?by=&lt;uri&gt; =&gt; returns a list of subje
 
 TODO: Add some examples here. Add support for paging. Add swagger definitions.
 
+### Query Title and Description Operation
+
+Firstly we define two well defined property types, 'wod:title' and 'wod:description'. The following search operation uses the values in these two properties to locate entities. The 'text' parameter can only be used in conjunction with the 'dataset' query parameter.
+
+The dataset query parameter can be repeated 0 or more times to restrict the dataset in which the search is performed.
+
+A WoD node should search in all fields of all entities that are either wod:title or wod:description. Hits in wod:title should be prioritised over those in wod:description.
+
+Results of the 
+
+
+GET /query?text=some text term here&dataset=&lt;uri&gt;
+
+
+
+
 ### Linked Data URL Resolution
 
 Follow-your-nose semantics works by a web endpoint capturing requests for subject representations and re-writing and re-routing them to the WoD server query endpoint. The following example shows how this should work:
@@ -1581,13 +1678,17 @@ http://api.webofdata.io/query?connected=http://data.webofdata.io/people/gra
 
 An example NGINX config and docker image are provided at https://github.com/webofdata/linked-data.
 
-## GRPC Service Binding
+## Security, Authorisation and Authentication
 
-As well as the HTTP and websocket bindings of the protocol this section defines the GRPC version of the service. 
+WoD services can be open but there are many scenarios where they need to secured and access to different operations checked based on who is making the request. 
 
-It should be noted that the entity data model is not represented as a GRPC model. The GRPC binding is defined in terms of bytes that contain the JSON entity objects. 
+All WoD services SHOULD be exposed over SSL connections.
 
-Clients in specific language bindings are responsible for using the bytes data as JSON.
+For internal or pulic endpoints that require control over what clients can do, it is recommended that authentication is performed externally from the WoD service to aquire a JWT token and that clients send this token to the service endpoint in the header to provide the set of claims and confirm they are allowed to perform the operation they are invoking.
+
+The mechanisms to authenticate and aquire a JWT or similar client token is not specified here. 
+
+To faciltate a common understanding of claims the following claim definition is proposed. While there is no requirement to implement the payload of the JWT structure as defined here, it can if widely adopted provide a common vocabulary for describing WoD claims.
 
 ## Conformance
 
@@ -1595,7 +1696,34 @@ It is not possible to define conformance for a data model, conformance can only 
 
 The automated conformance test suite can be run against any WoD node that claims to implement the protocol and serialisation parts of this specification. 
 
-The conformance client can be found online at http://github.com/webofdata/conformance. It includes source code, instructions for running the conformance tests.
+The conformance client can be found online at http://github.com/webofdata/conformance. It includes source code and instructions for running the conformance test suite.
+
+## Node Identity Resolution Service (NIRS)
+
+The distributed node identity resolution service (NIRS) provides a way for WoD service instances to register their service endpoints against logical identifiers.
+
+NIRS is a protocol implemented to provide Node resolution. A client can ask a NIRS node about a given service identifier and it resolves that to a specific URL endpoint.
+
+NIRS implementations can be chained together to give distributed resolution. The root NIRS service is a scaled out service located at `https://node-dns.webofdata.io/`
+
+Given a service endpoint at: `https://api.webofdata.io/publicdata` a client can register a this WoD instance with the following HTTP request. The body MUST be a WoD entity and the property 'wod:endpoint MUST be present.
+
+<pre>
+
+> POST /nodes HTTP/1.1
+> Host: node-dns.webofdata.io
+>
+{    
+    "@id" : "https://data.webofdata.io/nodes/publicdata",
+    "wod:endpoint" : "https://api.webofdata.io/publicdata"    
+}
+
+</pre>
+
+## Subject Identity Resolution Service (SIRS)
+
+
+
 
 ## References
 
