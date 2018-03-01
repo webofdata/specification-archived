@@ -344,13 +344,15 @@ paths:
       responses:
         200:
           description: "successful operation - dataset deleted"
+        404:
+          description: "Store or dataset not found"
 
   /stores/{store-name}/datasets/{dataset-name}/entities/partitions:
     get:
       tags:
         - "Management"
       summary: "Get partitions for reading the dataset in parallel"
-      description: "Returns a resource that provides links to read the dataset in parallel. Each provided returns entity arrays in the same way that a call to get-entities does."
+      description: "Returns a list of tokens to be used with the x-wod-next-data query parameter of the get-entities operation."
       operationId: "get-partitions"
       produces:
       - "application/json"
@@ -368,19 +370,21 @@ paths:
       - name: "partitions"
         in: "query"
         type: "string"
-        description: "If provided it indicates to the server the desired number of partitions. The server is free to decided the partition count."
+        description: "If provided it indicates to the server the desired number of partitions. The server is free to decide the partition count."
       responses:
         200:
           description: "successful operation"
           schema:
-            $ref: "#/definitions/EntityPartitions"
+            type: "array"
+            items:
+              type: "string"
 
   /stores/{store-name}/datasets/{dataset-name}/merge-operations:
     get:
       tags:
         - "Management"
       summary: "Gets list of merge operations."
-      description: "Gets a list of merge operations including any that is currently running. MUST return the most recent / current and MAY return a longer history."
+      description: "Gets a list of merge operations including any that is currently running. MUST return the most recent completed or currently executing and MAY return a longer history."
       operationId: "get-merge-operations"
       produces:
       - "application/json"
@@ -407,7 +411,7 @@ paths:
       tags:
         - "Management"
       summary: "Creates operation that will merge in the named dataset."
-      description: "Creates an operation that adds or updates all the entities in this dataset from those in the specified dataset. Any entities existing in this dataset that are not present or deleted in the specified dataset MUST be deleted."
+      description: "Creates an operation that adds or updates all the entities in this dataset from those in the specified dataset."
       operationId: "create-merge-operation"
       produces:
       - "application/json"
@@ -428,7 +432,11 @@ paths:
           $ref: "#/definitions/MergeOperation"
       responses:
         201:
-          description: "successful operation"
+          description: "Merge operation created"
+        400:
+          description: "Referenced dataset does not exist"
+        404:
+          description: "Store or dataset not found"
         501:
           description: "Merge is not supported on this dataset"
 
@@ -456,22 +464,24 @@ paths:
         - name: "id"
           in: "query"
           type: "string"
-          description: "If provided it must be either a full uri or curie and it will limit the number of entities to either 0 or 1, depending if an entity with that id exists in the dataset"
+          description: "If provided it must be a full uri and it will limit the number of entities to either 0 or 1, depending if an entity with that id exists in the dataset"
         - name: "nextdata"
           in: "query"
           type: "string"
-          description: "token used to retrieve more data. Tokens are provided as a result to calling get-entitie-partitions or as a value in the WOD-NEXT-DATA response header."
+          description: "A token used to retrieve more data. Tokens are provided as a result of calling get-entities-partitions or as a value in the X-WOD-NEXT-DATA response header."
       responses:
         200:
           description: "successful operation"
           headers:
-            x-wod-next-page:
-              description: "if present indicates to the client that there is more data to be retreived using the link in the value of this header. The response type of following a next page link is the same as when making the initial request."
+            x-wod-next-data:
+              description: "if present indicates to the client that there is more data to be retreived. Use the value of this header as the value of the 'nextdata' query parameter to retreive more data."
               type: "string"
           schema:
             type: "array"
             items:
               $ref: "#/definitions/Entity"
+        404:
+          description: "Store or dataset not found"
 
     delete:
       tags:
@@ -499,8 +509,8 @@ paths:
     post:
       tags:
         - "Management"
-      summary: "Add or replace entities in the dataset"
-      description: "Adds or replaces all the entities in the specified dataset with those provided in the body."
+      summary: "Add, replaces or deletes entities in the dataset"
+      description: "Adds, replaces or deletes all the entities in the specified dataset with those provided in the body."
       operationId: "store-entities"
       produces:
       - "application/json"
@@ -618,12 +628,6 @@ definitions:
       datatypes:
         type: "object"
 
-  EntityPartitions:
-    type: "object"
-    properties:
-      partitionlinks:
-        type: "string"
-
   Transaction:
     type: "object"
     properties:
@@ -657,6 +661,8 @@ definitions:
     type: "object"
     properties:
       id:
+        type: "string"
+      dataset:
         type: "string"
       status:
         type: "string"

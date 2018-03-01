@@ -527,6 +527,16 @@ definitions:
         type: "string"
       status:
         type: "string"
+        
+  MergeOperation:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+      dataset:
+        type: "string"
+      status:
+        type: "string"
 
 </pre>
 
@@ -1160,26 +1170,25 @@ The following example shows how to update the entity of a dataset with a PUT req
 
 ### Operation Merge Dataset
 
-Starts a merges operation from a named dataset (specified in the POST body json) into the one addressed. The semantics of this operation requires:
-  - that all entities that are present in B and not marked as deleted replace those in A that already exist with the same id, or are added to A. 
+Starts a merge operation from a named dataset (specified in the POST body json and called Dataset B for the purposes of the formalism below) into the one addressed (Dataset A). The semantics of this operation requires:
+  - that all entities that are present in dataset B and not marked as deleted replace those in A that already exist with the same id, all other entities are added to A. 
   - that all entities marked as deleted in B are marked as deleted in A.
   - that all entities that exist in A but are not in B are marked as deleted.
 
 While the operation is in progress any writes to A should be stored and only applied after the merge has completed. Any writes to B MUST be rejected.
 
-Support for this operation MAY be provided by a server. If the server doesn't offer the merge service then it should return a operation not supported response when a client attempts to POST the merge operation resource.
+Support for this operation MAY be provided by a server. If the server doesn't offer the merge service then it should return a operation not supported response when a client attempts to POST the merge operation.
 
 <pre>
 
-  /stores/{store-name}/datasets/{dataset-name}/merge: 
-    post: 
-     tags:
-        - "Management"
-      summary: Merge dataset
-      description: "Merge all entities from specified dataset into this one, delete any in this one that are not in the other."
-      operationId: "merge-dataset"
+  /stores/{store-name}/datasets/{dataset-name}/merge-operations: 
+      tags:
+       - "Management"
+      summary: "Creates operation that will merge in the named dataset."
+      description: "Creates an operation that adds or updates all the entities in this dataset from those in the specified dataset."
+      operationId: "create-merge-operation"
       produces:
-        - "application/json"
+      - "application/json"
       parameters:
       - name: "store-name"
         in: "path"
@@ -1191,56 +1200,37 @@ Support for this operation MAY be provided by a server. If the server doesn't of
         description: "dataset name"
         required: true
         type: "string"
-      - name: "body"
+      - name: "merge-operation"
         in: "body"
-        description: "Merge operation parameters"
-        required: true
         schema:
           $ref: "#/definitions/MergeOperation"
       responses:
-        200:
-          description: "successful operation - dataset updated"
-          schema:
-            $ref: "#/definitions/Dataset"
+        201:
+          description: "Merge operation created"
         400:
-          description: "Occurs when the dataset passed in the body is invalid or missing"
-
+          description: "Referenced dataset does not exist"
+        404:
+          description: "Store or dataset not found"
+        501:
+          description: "Merge is not supported on this dataset"
 </pre>
 
-The following example shows how to update the entity of a dataset with a PUT request.
+The following example shows how to send a merge request to a dataset. Note that the server is responsible to generating the id of the merge operation.
 
 <pre>
 
-HOST https://wod-api.example.com
-PUT /stores/store1/datasets/dataset1
-
+> PUT /stores/store1/datasets/dataset1 HTTP/1.1
+> Host: api.webofdata.io
+>
 { 
-  "name" : "dataset1", 
-  "entity" : {
-    "@context": {
-        "namespaces" : {
-            "test" : "http://example.org/"
-        }
-    },
-    "@id"       : "http://data.webofdata.io/publishing/store1/people",
-    "test:name" : "This dataset is very important"      
-  }
+    "dataset" : "dataset2"    
 }  
 
-Response =>
-
-200 OK
+< HTTP/1.1 201 Created
+< Location: /stores/store1/datasets/dataset1/merge-operations/merge1
 { 
-  "name" : "dataset1", 
-  "entity" : {
-    "@context": {
-        "namespaces" : {
-            "ns1" : "http://example.org/"
-        }
-    },
-    "@id"       : "http://data.webofdata.io/publishing/store1/people",
-    "ns1:name" : "This dataset is very important"      
-  }
+  "id" : "merge1", 
+  "status" : "in-progress"
 }   
  
 </pre>
@@ -1248,10 +1238,9 @@ Response =>
 
 ### Operation Delete Dataset
 
-A request to delete a dataset MUST delete the dataset entity and all contained entities.
+A request to delete a dataset. MUST delete the dataset entity and all contained entities.
 
 <pre>
-
   /stores/{store-name}/datasets/{dataset-name}:  
     delete:
       tags:
@@ -1273,27 +1262,29 @@ A request to delete a dataset MUST delete the dataset entity and all contained e
       responses:
         200:
           description: "successful operation - dataset deleted"
+        404:
+          description: "Store or dataset not found"
 </pre>
-
 
 The following example shows how to delete a dataset.
 
 <pre>
 
-HOST https://wod-api.example.com
-DELETE /stores/store1/datasets/dataset1
-
-=> response
-200 OK
+> DELETE /stores/store1/datasets/dataset1 HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+<
 
 </pre>
 
-
 ### Operation Get Entities
 
-A dataset contains entities. The complete set of entities in a dataset can be retrieved with the 'get-entities' operation. Responses to this request are free to stream all entities or return pages of entities and a link to the next page. 
+A dataset contains entities. The complete set of entities (excluding those marked as deleted) in a dataset can be retrieved with the 'get-entities' operation. Responses to this request are free to stream all entities or return pages of entities and a link to the next page. 
 
 This endpoint can also be used to retrieve a specific entity from the dataset. A specific entity can be retrieved by providing an identifier as a query parameter whose value is the URI identifier of the entity.
+
+As responses to this request can be large and hard for the server to determine the size of the response in advance a server MAY choose to return pages of data or can stream all the data using a multi-part response.
 
 <pre>
 
@@ -1302,28 +1293,29 @@ This endpoint can also be used to retrieve a specific entity from the dataset. A
       tags:
         - "Management"
       summary: "Get entities in the dataset"
-      description: "Returns the entities in the specified dataset. Can also be used to locate a specific entity using the id query parameter."
+      description: "Returns all the entities in the specified dataset. Can also be used to locate a specific entity using the id query parameter."
       operationId: "get-entities"
       produces:
-      - "application/json"
+        - "application/json"
       parameters:
-      - name: "store-name"
-        in: "path"
-        description: "store name"
-        required: true
-        type: "string"
-      - name: "dataset-name"
-        in: "path"
-        description: "dataset name"
-        required: true
-        type: "string"
-      - name: "nextdata"
-        in: "query"
-        description: "To be used with values provided by the x-wod-next-data header value. If omitted it indicates that the client wishes to retrieve all data." 
-      - name: "id"
-        in: "query"
-        description: "If provided it must be either a full uri or curie and it will limit the number of entities to either 0 or 1, depending if an entity with that id exists in the dataset. Cannot be used with the 'nextdata' parameter."
-        type: "string"
+        - name: "store-name"
+          in: "path"
+          description: "store name"
+          required: true
+          type: "string"
+        - name: "dataset-name"
+          in: "path"
+          description: "dataset name"
+          required: true
+          type: "string"
+        - name: "id"
+          in: "query"
+          type: "string"
+          description: "If provided it must be a full uri and it will limit the number of entities to either 0 or 1, depending if an entity with that id exists in the dataset"
+        - name: "nextdata"
+          in: "query"
+          type: "string"
+          description: "A token used to retrieve more data. Tokens are provided as a result of calling get-entities-partitions or as a value in the X-WOD-NEXT-DATA response header."
       responses:
         200:
           description: "successful operation"
@@ -1335,6 +1327,8 @@ This endpoint can also be used to retrieve a specific entity from the dataset. A
             type: "array"
             items:
               $ref: "#/definitions/Entity"
+        404:
+          description: "Store or dataset not found"
 
 </pre>
 
@@ -1342,12 +1336,10 @@ The following example shows how to use the 'get-entities' operation.
 
 <pre>
 
-HOST https://wod-api.example.com
-GET /stores/store1/datasets/entities
-
-Response =>
-
-200 OK
+> GET /stores/store1/datasets/entities HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
 [
   { 
     "@id" : "@context", 
@@ -1385,8 +1377,8 @@ If the etag is omitted or the 'x-wod-ignoreetags' header has a value of 'true' t
     post:
       tags:
         - "Management"
-      summary: "Add or replace entities in the dataset"
-      description: "Adds or replaces all the entities in the specified dataset with those provided in the body."
+      summary: "Add, replaces or deletes entities in the dataset"
+      description: "Adds, replaces or deletes all the entities in the specified dataset with those provided in the body."
       operationId: "store-entities"
       produces:
       - "application/json"
@@ -1417,12 +1409,36 @@ The following example shows how to upload several entities to be stored in a dat
 
 <pre>
 
+> POST /stores/store1/datasets/entities HTTP/1.1
+> Host: api.webofdata.io
+>
+[
+  { 
+    "@id" : "@context", 
+    "namespaces" : {
+      "products" : "http://examples.org/products/"   
+    }
+  },
+  {
+    "@id" : "products:1",
+    "producst:name" : "product 1"      
+  },
+  {
+    "@id" : "products:2",
+    "@deleted" : true,
+    "producst:name" : "product 2"      
+  }
+] 
+
+< HTTP/1.1 200 OK
+<
+
 </pre>
 
 
 ### Operation Delete Entities
 
-The delete entities operation lets a client request that all entities in a dataset are deleted. The dataset itself is not deleted, neither is the dataset entity object. A request for changes to this dataset would return all entities, and they would be marked as '@deleted' = true.
+The delete entities operation lets a client request that all entities in a dataset are deleted. The dataset itself is not deleted, neither is the dataset entity object. A request for changes to this dataset after this operation has completed MAY either return all entities marked as '@deleted' = true, or the x-wod-full-sync header would be set to true and no data would be returned.
 
 <pre>
   /stores/{store-name}/datasets/{dataset-name}/entities:
@@ -1450,9 +1466,90 @@ The delete entities operation lets a client request that all entities in a datas
             description: "successful operation"
 </pre>
 
+The following example shows how to delete the entities in a dataset.
+
+<pre>
+
+> DELETE /stores/store1/datasets/entities HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+<
+
+</pre>
+
 ### Operation Get Entities Partitions
 
 To allow the entities of a dataset to be fetched in parallel a dataset MAY offer the 'get-partitions' endpoint. This endpoint returns a list of tokens that can then be used to consume the dataset in parallel. The mechanism for retrieving a single partition is identical to that of making a call to the 'get-entities' operation except that the 'nextdata' query parameter is either a value from the result of calling 'get-entities-partitions'  or the x-wod-next-data header in a response from 'get-entitites'.
+
+<pre>
+
+ /stores/{store-name}/datasets/{dataset-name}/entities/partitions:
+    get:
+      tags:
+        - "Management"
+      summary: "Get partitions for reading the dataset in parallel"
+      description: "Returns a list of tokens to be used with the x-wod-next-data query parameter of the get-entities operation."
+      operationId: "get-partitions"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "store name"
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "dataset name"
+        required: true
+        type: "string"
+      - name: "partitions"
+        in: "query"
+        type: "string"
+        description: "If provided it indicates to the server the desired number of partitions. The server is free to decide the partition count."
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/EntityPartitions"
+
+</pre>
+
+The following example shows how to retrieve partition tokens to allow a client to read the dataset entities in parallel.
+
+<pre>
+
+> GET /stores/store1/datasets/entities/partitions HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+<
+[
+  { 
+    "@id" : "@context", 
+    "namespaces" : {
+      "products" : "http://examples.org/products/"   
+    }
+  },
+  {
+    "@id" : "products:1",
+    "producst:name" : "product 1"      
+  },
+  {
+    "@id" : "products:2",
+    "@deleted" : true,
+    "producst:name" : "product 2"      
+  }
+] 
+
+
+And then a client can make parallel calls such as:
+
+
+
+</pre>
+
 
 ### Operation Get Transactions
 
