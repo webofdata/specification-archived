@@ -515,18 +515,24 @@ definitions:
       dataset:
         type: "string"
         description: "The name of the dataset to update entities in"
-      body:
+      entities:
         type: array
         items:
           $ref: "#/definitions/Entity"
 
   TransactionInfo:
-    type: "object"
-    properties:
-      id:
-        type: "string"
-      status:
-        type: "string"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        status:
+          type: "string"
+        error:
+          type: "boolean"
+        errorcode:
+          type: "string"
+        errormsg:
+          type: "string"
         
   MergeOperation:
     type: "object"
@@ -1336,7 +1342,7 @@ The following example shows how to use the 'get-entities' operation.
 
 <pre>
 
-> GET /stores/store1/datasets/entities HTTP/1.1
+> GET /stores/store1/datasets/dataset1/entities HTTP/1.1
 > Host: api.webofdata.io
 >
 < HTTP/1.1 200 OK
@@ -1409,7 +1415,7 @@ The following example shows how to upload several entities to be stored in a dat
 
 <pre>
 
-> POST /stores/store1/datasets/entities HTTP/1.1
+> POST /stores/store1/datasets/dataset1/entities HTTP/1.1
 > Host: api.webofdata.io
 >
 [
@@ -1480,7 +1486,7 @@ The following example shows how to delete the entities in a dataset.
 
 ### Operation Get Entities Partitions
 
-To allow the entities of a dataset to be fetched in parallel a dataset MAY offer the 'get-partitions' endpoint. This endpoint returns a list of tokens that can then be used to consume the dataset in parallel. The mechanism for retrieving a single partition is identical to that of making a call to the 'get-entities' operation except that the 'nextdata' query parameter is either a value from the result of calling 'get-entities-partitions'  or the x-wod-next-data header in a response from 'get-entitites'.
+To allow the entities of a dataset to be fetched in parallel, a dataset MAY offer the 'get-partitions' endpoint. This endpoint returns a list of tokens that can then be used to consume the dataset in parallel. The mechanism for retrieving a single partition is identical to that of making a call to the 'get-entities' operation except that the 'nextdata' query parameter is either a value from the result of calling 'get-entities-partitions' or the x-wod-next-data header in a response from 'get-entitites'.
 
 <pre>
 
@@ -1507,12 +1513,14 @@ To allow the entities of a dataset to be fetched in parallel a dataset MAY offer
       - name: "partitions"
         in: "query"
         type: "string"
-        description: "If provided it indicates to the server the desired number of partitions. The server is free to decide the partition count."
+        description: "If provided it indicates to the server the desired number of partitions. However, the server is free to decide the partition count."
       responses:
         200:
           description: "successful operation"
           schema:
             $ref: "#/definitions/EntityPartitions"
+        404:
+          description: "Store or dataset not found"
 
 </pre>
 
@@ -1526,6 +1534,21 @@ The following example shows how to retrieve partition tokens to allow a client t
 < HTTP/1.1 200 OK
 <
 [
+    "partition:0:0",
+    "partition:1:0",
+] 
+
+</pre>
+
+And then a client can make calls such to retrieve the data from one partition. The response may contain an x-wod-next-data header. The value of this header should be used to retrieve subsequent data from this partition as the value of the `nextdata` query parameter. 
+
+<pre>
+
+> GET /stores/store1/datasets/entities?nextdata=partition:0:0 HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+[
   { 
     "@id" : "@context", 
     "namespaces" : {
@@ -1535,18 +1558,8 @@ The following example shows how to retrieve partition tokens to allow a client t
   {
     "@id" : "products:1",
     "producst:name" : "product 1"      
-  },
-  {
-    "@id" : "products:2",
-    "@deleted" : true,
-    "producst:name" : "product 2"      
   }
-] 
-
-
-And then a client can make parallel calls such as:
-
-
+]  
 
 </pre>
 
@@ -1555,47 +1568,172 @@ And then a client can make parallel calls such as:
 
 The 'get-transactions' operation allows a client to fetch a list of transactions that the server knows about. The status query parameter to this operation is used by the client to control which transaction objects are returned.
 
-<pre>
+Returns a list of transactions. The list can be filtered by the status of the transaction.  
 
+<pre>
   /stores/{store-name}/transactions:
     get:
       tags:
         - "Management"
-      summary: "Get entities in the dataset"
-      description: "Returns the entities in the specified dataset. Can also be used to locate a specific entity using the id query parameter."
-      operationId: "get-entities"
-      produces:
-      - "application/json"
+      summary: returns a list of transactions
+      operationId: get-transactions
       parameters:
-      - name: "store-name"
-        in: "path"
-        description: "store name"
-        required: true
-        type: "string"
-      - name: "status"
-        in: "query"
-        description: "." 
-        type: "string"
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+        - name: "status"
+          in: "query"
+          description: "one of queued, running, completed"
+          type: "string"
       responses:
         200:
           description: "successful operation"
-          headers:
-            x-wod-next-data:
-              description: "if present indicates to the client that there is more data to be retreived. Use the value of this header as the value of the 'nextdata' query parameter to retreive more data."
-              type: "string"
           schema:
             type: "array"
             items:
-              $ref: "#/definitions/Entity"
+              $ref: "#/definitions/TransactionInfo"
+        404:
+          description: "Store not found"
 
 </pre>
 
+The following example shows how to a get list of transactions from a store. 
+
+<pre>
+
+> GET /stores/store1/transactions HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+[
+  { 
+    "id" : "txn-23", 
+    "status" : "completed"
+  },
+  {
+    "id" : "txn-24",
+    "status" : "queued"
+  }
+]
+
+</pre>
+
+To get just the completed transactions use the status query parameter:
+
+<pre>
+
+> GET /stores/store1/transactions?status=completed HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+[
+  { 
+    "id" : "txn-23", 
+    "status" : "completed"
+  }
+]
+
+</pre>
+
+The query parameter can be repeated to select transactions of more than one type.
+
+<pre>
+
+> GET /stores/store1/transactions?status=completed&status=running HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+[
+  { 
+    "id" : "txn-23", 
+    "status" : "completed",
+    "error" : false
+  },
+  {
+    "id" : "txn-24",
+    "status" : "running"
+  }
+]
+
+</pre>
 
 ### Operation Create Transaction
 
+A client can create a transaction using the `create-transaction` operation. The server is expected to queue and then execute the transaction. The transaction consists of an array of `TransactionOperation` objects. Each of these objects has a `dataset` property that names the dataset to be updated, and a property called `entities` that contains an array of `Entity` objects. The entities should be applied to the named dataset as though they have been posted to the entities endpoint of the dataset. 
 
+<pre>
 
+  /stores/{store-name}/transactions:
+    post:
+      tags:
+        - "Management"
+      summary: Atomically updates entities across one or more datasets.
+      operationId: create-transaction
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+        - name: "body"
+          in: "body"
+          description: "Transaction data"
+          required: true
+          schema:
+            $ref: "#/definitions/Transaction"
+      responses:
+        204:
+          description: "succesful operation"
+        404:
+          description: "Store not found"
 
+</pre>
+
+The following example shows how to create a new transaction that updates two different entities in two different datasets.
+
+<pre>
+
+> POST /stores/store1/transactions HTTP/1.1
+> Host: api.webofdata.io
+>
+[
+  {
+    "dataset" : "dataset1",
+    "entities" :
+        { 
+          "@id" : "@context", 
+          "namespaces" : {
+            "products" : "http://examples.org/products/"   
+          }
+        },
+        {
+          "@id" : "products:1",
+          "products:name" : "product 1"      
+        }  
+  },
+  
+  {
+    "dataset" : "dataset2",
+    "entities" :
+        { 
+          "@id" : "@context", 
+          "namespaces" : {
+            "products" : "http://examples.org/products/"   
+          }
+        },
+        {
+          "@id" : "products:2",
+          "products:name" : "product 2"      
+        }  
+    }
+] 
+
+< HTTP/1.1 204 OK
+<
+
+</pre>
 
 
 ## Data Synchronisation
@@ -1662,7 +1800,57 @@ This operation exposes the changes that occur to a dataset. Even though an entit
 
 </pre>
 
-The following example describes an interaction between a client and a server. The client requests changes, updates a local store or system with the new entity representations, stores the x-wod-next-data token, and then, later on, makes a get request that uses the stored x-wod-next-data token. 
+The following example describes an interaction between a client and a server. The client requests changes, updates a local store or system with the new entity representations, stores the x-wod-next-data token, and then, later on, makes a get request that uses the stored x-wod-next-data token. The actual value of the x-wod-next-data header is not defined, and up to the server. Clients MUST not try and deconstruct the token, or create tokens.
+
+<pre>
+
+> GET /stores/store1/datasets/dataset1/changes HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+< x-wod-next-data: offset:2
+[
+  { 
+    "@id" : "@context", 
+    "namespaces" : {
+      "products" : "http://examples.org/products/"   
+    }
+  },
+  {
+    "@id" : "products:1",
+    "products:name" : "product 1"      
+  },
+  {
+    "@id" : "products:2",
+    "products:name" : "product 2"      
+  }
+]  
+
+</pre>
+
+A client would store the value of x-wod-next-data, in this case `offset:2` and use it in a subsequent call. Such as:
+
+<pre>
+
+> GET /stores/store1/datasets/dataset1/changes?nextdata=offset:2 HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+[
+  { 
+    "@id" : "@context", 
+    "namespaces" : {
+      "products" : "http://examples.org/products/"   
+    }
+  },
+  {
+    "@id" : "products:3",
+    "products:name" : "product 1"      
+  }
+]  
+
+</pre>
+
 
 #### X-WOD-FULL-SYNC HEADER
 
@@ -1670,7 +1858,7 @@ The response can include a `X-WOD-FULL-SYNC` header. The header can have one of 
 
   - false (default)
 
-    Meaning that the entities in the list can replace the subject representations the client already has stored.
+    Meaning that the entities in the list can replace (update or mark as deleted) the subject representations the client already has stored.
 
   - true
 
@@ -1719,9 +1907,95 @@ When a client receives the `X-WOD-FULL-SYNC` header and it has a value of `true`
 
 ### Operation Get Change Partitions
 
-To allow the changes to a dataset to be processed in parallel a dataset MAY offer the `get-changes-partitions` endpoint. This endpoint returns a list of links that can then be used to consume the changes to a dataset in parallel. 
+To allow the changes to a dataset to be processed in parallel a dataset MAY offer the `get-changes-partitions` endpoint. This endpoint returns a list of tokens that can then be used to consume the changes to a dataset in parallel. 
 
 A client calling this operation receives N tokens. Each token can be used as an initial 'nextdata' parameter to 'get-changes'.  
+
+The endpoint is defined as follows:
+
+<pre>
+
+  /stores/{store-name}/datasets/{dataset-name}/changes/partitions:
+    get:
+      tags:
+        - "Synchronisation"
+      summary: "Get partitions for reading the changes to a dataset in parallel"
+      description: "Returns a list of tokens to be used with the x-wod-next-data query parameter of the get-changes operation."
+      operationId: "get-changes-partitions"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "store name"
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "dataset name"
+        required: true
+        type: "string"
+      - name: "count"
+        in: "query"
+        type: "string"
+        description: "If provided it indicates to the server the desired number of partitions. However, the server is free to decide the partition count."
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            type: "array"
+            items:
+              type: "string"
+        404:
+          description: "Store or dataset not found"
+
+</pre>
+
+An example request showing a server returning a list of tokens. Note that the server is free to define the content of each token and a client should not try to deconstruct the token.  
+
+<pre>
+
+> GET /stores/store1/datasets/changes/partitions HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+<
+[
+    "partition:0:0",
+    "partition:1:0",
+] 
+
+</pre>
+
+These tokens can then be used to initiate calls to `get-changes` such as:
+
+<pre>
+
+> GET /stores/store1/datasets/dataset1/changes?nextdata=partition:0:0 HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+< x-wod-next-data: partition:0:2
+[
+  { 
+    "@id" : "@context", 
+    "namespaces" : {
+      "products" : "http://examples.org/products/"   
+    }
+  },
+  {
+    "@id" : "products:1",
+    "products:name" : "product 1"      
+  },
+  {
+    "@id" : "products:2",
+    "products:name" : "product 2"      
+  }
+]  
+
+</pre>
+
+When processing the changes of a dataset in parallel it is possible for any one of the client requests to a specific partition to receive the full-sync header with a value of true. In this case the client must stop all partitions that are processing changes for that dataset, delete the local dataset and then restart processing by requesting new partition tokens and then calling 'get-changes' with the new tokens. 
 
 ## Query Operations
 
@@ -1729,13 +2003,91 @@ The WebOfData Query operations are designed to facilitate the retrieval of the r
 
 The protocol is intended to work both in controlled (secure, closed networks) and open environments (on the web). It separates the use of URIs as identifiers from the use of URLs as references to resolvable resource representations.
 
-Some WoD nodes are exposing datasets that require understanding by humans. These are often bootstrapping vocabularies or schema terms that are basic for other applications. They are also starting points for further traversal in the web of data. Some of the endpoints provide basic search features for locating key subjects.
+Some WoD nodes are exposing datasets that require understanding by humans. These are often bootstrapping vocabularies or schema terms that are basic for other applications. They are also starting points for further traversal in the web of data. 
 
-### Query Subject Operation
+## Query Operation
+
+The query endpoint can take a variety of query parameters that allow a client to search for subjects or connected subjects. The datasets in which the search is performed can also be restricted by using the dataset query parameter. The endpoint is defined as follows:
+
+<pre>
+
+  /stores/{store-name}/query:
+    get:
+      tags:
+        - "Query"
+      summary: Queries across the datasets of the store using the query parameters provided.
+      operationId: query-store
+      parameters:
+        - name: "store-name"
+          in: "path"
+          description: "unique store name for this service endpoint"
+          required: true
+          type: "string"
+        - name: "subject"
+          in: "query"
+          required: false
+          type: "string"
+        - name: "connected"
+          in: "query"
+          required: false
+          type: "string"
+          description: "If provided indicates that the query should find all subjects connected to the identified subject. Value is either * or a URI."
+        - name: "incoming"
+          in: "query"
+          required: false
+          type: "boolean"
+          description: "Used in combination with connected to indicate if the subject is the source or the target of the connections to be found. Default value is false."
+        - name: "text"
+          in: "query"
+          required: false
+          type: "string"
+          description: "Can only be used in conjunction with the dataset query parameter. Searches for subjects whose wod:title or wod:description property values contain the value of the text expression"
+        - name: "dataset"
+          in: "query"
+          required: false
+          type: "string"
+          description: "Repeatable parameter that indicates which datasets should be queried. If no values are specified then all datasets are used."
+        - name: "sameas"
+          in: "query"
+          required: false
+          type: "boolean"
+          description: "By default this is false. If provided, and if true then the server should attempt to resolve all wod:sameas links (across the specified datasets) of the subject, and any entities in the result set."
+        - name: "nextdata"
+          in: "query"
+          required: false
+          type: "string"
+          description: "Can not be used with any other query parameters. The value of this query parameter should be values returned as the x-wod-next-data header from a prior query. The server is responsible for encoding into the token enough information to provide the next set of results."
+        - name: "pagesize"
+          in: "query"
+          required: false
+          type: "integer"
+          description: "A request to the server for the maximum number of items to returned. The server MAY ignore this."
+      responses:
+        200:
+          description: "successful operation"
+          headers:
+            x-wod-next-data:
+              description: "if present indicates to the client that there is more data to be retrieved. Use the value of this header as the value of the 'nextdata' query parameter to retrieve more data."
+              type: "string"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Entity"
+        404:
+          description: "Store or dataset not found"
+
+</pre>
+
+
+### Query for Subject by Identifier
 
 <pre>
 GET /query?subject=&lt;uri&gt; =&gt; returns a representation of the subject.
 </pre>
+
+
+### Query for Connected Subjects
+
 
 <pre>
 GET /query?connected-to=&lt;uri&gt; =&gt; returns a list of subject representations
@@ -1747,20 +2099,19 @@ GET /query?connected-to=&lt;uri&gt;?by=&lt;uri&gt; =&gt; returns a list of subje
 
 TODO: Add some examples here. Add support for paging. Add swagger definitions.
 
-### Query Title and Description Operation
+#### Query For Subject By Title and Description
 
-Firstly we define two well defined property types, 'wod:title' and 'wod:description'. The following search operation uses the values in these two properties to locate entities. The 'text' parameter can only be used in conjunction with the 'dataset' query parameter.
+As well as machine to machine communication WoD provides a way for humans to find subjects of interest by searching for them by name or description. This is most common when trying to find a starting point subject, or well known subject.
 
-The dataset query parameter can be repeated 0 or more times to restrict the dataset in which the search is performed.
+WoD defines two property types, 'wod:title' and 'wod:description'. The following search operation uses the values in these two properties to locate entities. The 'text' parameter can only be used in conjunction with the 'dataset' query parameter.
+
+The dataset query parameter can be repeated 0 or more times to restrict the dataset in which the search is performed. If it is not provided then the search occurs across all datasets.
 
 A WoD node should search in all fields of all entities that are either wod:title or wod:description. Hits in wod:title should be prioritised over those in wod:description.
 
-Results of the 
-
+The quality of the search results is left up to the implementor. 
 
 GET /query?text=some text term here&dataset=&lt;uri&gt;
-
-
 
 
 ### Linked Data URL Resolution

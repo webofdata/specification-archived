@@ -145,7 +145,7 @@ paths:
     get:
       tags:
         - "Query"
-      summary: queries across the datasets of the store using the query parameters provided.
+      summary: Queries across the datasets of the store using the query parameters provided.
       operationId: query-store
       parameters:
         - name: "store-name"
@@ -157,9 +157,55 @@ paths:
           in: "query"
           required: false
           type: "string"
+        - name: "connected"
+          in: "query"
+          required: false
+          type: "string"
+          description: "If provided indicates that the query should find all subjects connected to the identified subject. Value is either * or a URI."
+        - name: "incoming"
+          in: "query"
+          required: false
+          type: "boolean"
+          description: "Used in combination with connected to indicate if the subject is the source or the target of the connections to be found. Default value is false."
+        - name: "text"
+          in: "query"
+          required: false
+          type: "string"
+          description: "Can only be used in conjunction with the dataset query parameter. Searches for subjects whose wod:title or wod:description property values contain the value of the text expression"
+        - name: "dataset"
+          in: "query"
+          required: false
+          type: "string"
+          description: "Repeatable parameter that indicates which datasets should be queried. If no values are specified then all datasets are used."
+        - name: "sameas"
+          in: "query"
+          required: false
+          type: "boolean"
+          description: "By default this is false. If provided, and if true then the server should attempt to resolve all wod:sameas links (across the specified datasets) of the subject, and any entities in the result set."
+        - name: "nextdata"
+          in: "query"
+          required: false
+          type: "string"
+          description: "Can not be used with any other query parameters. The value of this query parameter should be values returned as the x-wod-next-data header from a prior query. The server is responsible for encoding into the token enough information to provide the next set of results."
+        - name: "pagesize"
+          in: "query"
+          required: false
+          type: "integer"
+          description: "A request to the server for the maximum number of items to returned. The server MAY ignore this."
       responses:
         200:
-          description: "succesful operation"
+          description: "successful operation"
+          headers:
+            x-wod-next-data:
+              description: "if present indicates to the client that there is more data to be retrieved. Use the value of this header as the value of the 'nextdata' query parameter to retrieve more data."
+              type: "string"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Entity"
+        404:
+          description: "Store or dataset not found"
+
 
   /stores/{store-name}/transactions:
     post:
@@ -182,6 +228,8 @@ paths:
       responses:
         200:
           description: "succesful operation"
+        404:
+          description: "Store not found"
 
     get:
       tags:
@@ -205,6 +253,8 @@ paths:
             type: "array"
             items:
               $ref: "#/definitions/TransactionInfo"
+        404:
+          description: "Store not found"
 
   /stores/{store-name}/datasets:
     get:
@@ -367,10 +417,10 @@ paths:
         description: "dataset name"
         required: true
         type: "string"
-      - name: "partitions"
+      - name: "count"
         in: "query"
         type: "string"
-        description: "If provided it indicates to the server the desired number of partitions. The server is free to decide the partition count."
+        description: "If provided it indicates to the server the desired number of partitions. However, the server is free to decide the partition count."
       responses:
         200:
           description: "successful operation"
@@ -378,6 +428,8 @@ paths:
             type: "array"
             items:
               type: "string"
+        404:
+          description: "Store or dataset not found"
 
   /stores/{store-name}/datasets/{dataset-name}/merge-operations:
     get:
@@ -578,6 +630,40 @@ paths:
         400:
           description: "Invalid since token"
 
+  /stores/{store-name}/datasets/{dataset-name}/changes/partitions:
+    get:
+      tags:
+        - "Synchronisation"
+      summary: "Get partitions for reading the changes to a dataset in parallel"
+      description: "Returns a list of tokens to be used with the x-wod-next-data query parameter of the get-changes operation."
+      operationId: "get-changes-partitions"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "store-name"
+        in: "path"
+        description: "store name"
+        required: true
+        type: "string"
+      - name: "dataset-name"
+        in: "path"
+        description: "dataset name"
+        required: true
+        type: "string"
+      - name: "count"
+        in: "query"
+        type: "string"
+        description: "If provided it indicates to the server the desired number of partitions. However, the server is free to decide the partition count."
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            type: "array"
+            items:
+              type: "string"
+        404:
+          description: "Store or dataset not found"
+
 
 definitions:
 
@@ -644,7 +730,10 @@ definitions:
       dataset:
         type: "string"
         description: "The name of the dataset to update entities in"
-      body:
+      ignore-etags:
+        type: "boolean"
+        description: "Indicates if etags should be ignored"
+      entities:
         type: array
         items:
           $ref: "#/definitions/Entity"
@@ -655,6 +744,12 @@ definitions:
       id:
         type: "string"
       status:
+        type: "string"
+      error:
+        type: "boolean"
+      errorcode:
+        type: "string"
+      errormsg:
         type: "string"
 
   MergeOperation:
