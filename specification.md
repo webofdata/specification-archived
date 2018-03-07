@@ -2003,11 +2003,11 @@ The WebOfData Query operations are designed to facilitate the retrieval of the r
 
 The protocol is intended to work both in controlled (secure, closed networks) and open environments (on the web). It separates the use of URIs as identifiers from the use of URLs as references to resolvable resource representations.
 
-Some WoD nodes are exposing datasets that require understanding by humans. These are often bootstrapping vocabularies or schema terms that are basic for other applications. They are also starting points for further traversal in the web of data. 
+Some WoD nodes are exposing datasets that require understanding by humans. These are often bootstrapping vocabularies or schema terms that are the basis for other applications. They are also starting points for further traversal in the web of data. The query interface provides simple but inclusive means to locate subject entities by name or description.
 
 ## Query Operation
 
-The query endpoint can take a variety of query parameters that allow a client to search for subjects or connected subjects. The datasets in which the search is performed can also be restricted by using the dataset query parameter. The endpoint is defined as follows:
+The query endpoint can take a variety of query parameters that allow a client to search for subjects or connected subjects. The datasets in which the search is performed can also be restricted by using the dataset query parameter. The endpoint and the allowed query parameters is defined as follows:
 
 <pre>
 
@@ -2081,25 +2081,48 @@ The query endpoint can take a variety of query parameters that allow a client to
 
 ### Query for Subject by Identifier
 
+To query for a single entity by its subject identifier use the 'subject' query parameter. The following example shows how to locate a single entity in any dataset in the specified store. If the same entity exists in more than one dataset then the entities MUST be merged according to the merging semantics.
+
 <pre>
-GET /query?subject=&lt;uri&gt; =&gt; returns a representation of the subject.
+> GET /query?subject=http://data.webofdata.io/people/gra HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+{
+    "@id" : "http://data.webofdata.io/people/gra",
+    "http://data.webofdata.io/people/name" : "graham moore"      
+}
+
 </pre>
 
+The 'sameas' query parameter can also be used to instruct the server to resolve any 'wod:sameas' references. If the value of the 'sameas' query parameter is 'true' then any entities located by 'wod:sameas' property values are merged into the resulting entity.
 
 ### Query for Connected Subjects
 
+To traverse a graph of connected subjects the 'connected' query parameter can be used. The value of this property can either be '*' to indicate all relationships or a URI that identifies the property type to use. 
+
+A starting point for the traversal is specified using the 'subject' query parameter. This identifies the starting point for the traversal. The value of this parameter MUST be a URI. 
+
+The result of this query can be many results (e.g. when navigating from a type to it's instances or from a category to it's members.)
 
 <pre>
-GET /query?connected-to=&lt;uri&gt; =&gt; returns a list of subject representations
+> GET /query?subject=http://data.webofdata.io/people/gra&connected=* HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+{
+    "@id" : "http://data.webofdata.io/schools/gra",
+    "http://data.webofdata.io/people/name" : "graham moore"      
+}
 </pre>
+
+To traverse in towards the subject rather than away from it use the 'connected' query parameter to identify the property and the 'incoming' query parameter with a value of 'true' to indicate the subject should be the target of any connections and not the source.  
 
 <pre>
 GET /query?connected-to=&lt;uri&gt;?by=&lt;uri&gt; =&gt; returns a list of subject representations that are connected with the given subject by incoming references of the specified property name.
 </pre>
 
-TODO: Add some examples here. Add support for paging. Add swagger definitions.
-
-#### Query For Subject By Title and Description
+### Query For Subject By Title and Description
 
 As well as machine to machine communication WoD provides a way for humans to find subjects of interest by searching for them by name or description. This is most common when trying to find a starting point subject, or well known subject.
 
@@ -2121,22 +2144,20 @@ Follow-your-nose semantics works by a web endpoint capturing requests for subjec
 <pre>
 http://data.webofdata.io/people/gra gets re-written as 
 
-http://api.webofdata.io/query?connected=http://data.webofdata.io/people/gra
+https://api.webofdata.io/query?subject=http://data.webofdata.io/people/gra
 </pre>
 
 An example NGINX config and docker image are provided at https://github.com/webofdata/linked-data.
 
 ## Security, Authorisation and Authentication
 
-WoD services can be open but there are many scenarios where they need to secured and access to different operations checked based on who is making the request. 
+WoD services can be open but there are many scenarios where they need to secured and access to different operations restricted based on who is making the request. 
 
 All WoD services SHOULD be exposed over SSL connections.
 
-For internal or pulic endpoints that require control over what clients can do, it is recommended that authentication is performed externally from the WoD service to aquire a JWT token and that clients send this token to the service endpoint in the header to provide the set of claims and confirm they are allowed to perform the operation they are invoking.
+For internal or public endpoints that require control over what clients can do, it is recommended that authentication is performed externally from the WoD service to aquire a JWT token and that clients send this token to the service endpoint in the header to provide the set of claims and confirm they are allowed to perform the operation they are invoking.
 
-The mechanisms to authenticate and aquire a JWT or similar client token is not specified here. 
-
-To faciltate a common understanding of claims the following claim definition is proposed. While there is no requirement to implement the payload of the JWT structure as defined here, it can if widely adopted provide a common vocabulary for describing WoD claims.
+The mechanisms to authenticate and aquire a JWT or similar client token is not specified here. However, to faciltate a common understanding of core WoD claims the following claim structure is defined. This provides a common vocabulary for describing WoD claims.
 
 ## Conformance
 
