@@ -2099,11 +2099,13 @@ The 'sameas' query parameter can also be used to instruct the server to resolve 
 
 ### Query for Connected Subjects
 
-To traverse a graph of connected subjects the 'connected' query parameter can be used. The value of this property can either be '*' to indicate all relationships or a URI that identifies the property type to use. 
+To traverse a graph of connected subjects the 'connected' query parameter can be used. The value of this property can either be '*' to indicate all relationships or a URI that identifies the property type to use in traversing the graph. 
 
-A starting point for the traversal is specified using the 'subject' query parameter. This identifies the starting point for the traversal. The value of this parameter MUST be a URI. 
+The starting point for the traversal is specified using the 'subject' query parameter. This identifies the starting point for the traversal. The value of this parameter MUST be a URI. 
 
-The result of this query can be many results (e.g. when navigating from a type to it's instances or from a category to it's members.)
+The result of this query can be many results (e.g. when navigating from a type to it's instances or from a category to it's members.) The server is free to return a subset of the full results along with a token that can be used to fetch more data.
+
+The following example shows how to get all entities related (via outgoing connections) to the entity identified with a subject identifier.
 
 <pre>
 > GET /query?subject=http://data.webofdata.io/people/gra&connected=* HTTP/1.1
@@ -2111,8 +2113,8 @@ The result of this query can be many results (e.g. when navigating from a type t
 >
 < HTTP/1.1 200 OK
 {
-    "@id" : "http://data.webofdata.io/schools/gra",
-    "http://data.webofdata.io/people/name" : "graham moore"      
+    "@id" : "http://data.webofdata.io/schools/stbarts",
+    "http://data.webofdata.io/schools/name" : "st barts"      
 }
 </pre>
 
@@ -2122,24 +2124,87 @@ To traverse in towards the subject rather than away from it use the 'connected' 
 GET /query?connected-to=&lt;uri&gt;?by=&lt;uri&gt; =&gt; returns a list of subject representations that are connected with the given subject by incoming references of the specified property name.
 </pre>
 
-### Query For Subject By Title and Description
+Note that when querying the graph only relationships defined in the root of the entity are considered. The following entity would *not* match any outgoing or incoming queries as the only reference type is not at the root entity.
+
+<pre>
+{ 
+    "@id" : "@context", 
+    "namespaces" : {
+      "products" : "http://examples.org/products/"   
+    }
+  },
+  {
+    "@id" : "products:1",
+    "products:name" : "product 1",
+    "products:manager: {
+        "products:company" : "&lt;http://data.webofdata.io/examples/bigone>"
+    }      
+  }
+}
+</pre>
+
+If the number of results to be returned is more than the server wishes to provide in one response or more than the client would like to receive then the server can return a partial result along with a token that allows the client to fetch more results. 
+
+A client can request a number of results to return, but the server is free to ignore this. Servers typically ignore this request when the number is higher than the maximum number of results that the server is prepared to return.
+
+The following example shows a client, server interchange with the client requesting a small number of results and the server returning the requested number along with a 'wod-next-data' header whose value can then be used with the 'nextdata' query parameter to retreive more results. 
+
+The 'nextdata' query token can not be used with any other query parameters.
+
+
+The initial request for related entities and a result 'pagesize' of one, and then a response, along with the 'x-wod-next-data' header for more data.
+
+<pre>
+> GET /query?subject=http://data.webofdata.io/people/gra&connected=*&pagesize=1 HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+< X-WOD-NEXT-DATA: http://data.webofdata.io/people/gra::connected=*::pagesize=1::from=1
+{
+    "@id" : "http://data.webofdata.io/schools/stbarts",
+    "http://data.webofdata.io/schools/name" : "st barts"      
+}
+</pre>
+
+Then a subsequent request using the token provided. Note that tokens are opaque and a client should not try and generate or modify tokens. 
+
+<pre>
+> GET /query?token=http://data.webofdata.io/people/gra::connected=*::pagesize=1::from=1 HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+{
+    "@id" : "http://data.webofdata.io/unis/southampton",
+    "http://data.webofdata.io/schools/name" : "Southampton"      
+}
+</pre>
+
+
+### Query For Subject By Title and / or Description
 
 As well as machine to machine communication WoD provides a way for humans to find subjects of interest by searching for them by name or description. This is most common when trying to find a starting point subject, or well known subject.
 
-WoD defines two property types, 'wod:title' and 'wod:description'. The following search operation uses the values in these two properties to locate entities. The 'text' parameter can only be used in conjunction with the 'dataset' query parameter.
+WoD defines two property types, 'wod:title' and 'wod:description'. The following search operation uses the values in these two properties to locate entities. The 'text' query parameter can only be used in conjunction with the 'dataset' query parameter.
 
 The dataset query parameter can be repeated 0 or more times to restrict the dataset in which the search is performed. If it is not provided then the search occurs across all datasets.
 
-A WoD node should search in all fields of all entities that are either wod:title or wod:description. Hits in wod:title should be prioritised over those in wod:description.
+A WoD node should search in all fields of all entities that are either wod:title or wod:description. Hits in wod:title should be prioritised over those in wod:description. The quality of the search results is left up to the implementation. 
 
-The quality of the search results is left up to the implementor. 
-
-GET /query?text=some text term here&dataset=&lt;uri&gt;
-
+The following example shows how
+<pre>
+> GET /query?text=southampton HTTP/1.1
+> Host: api.webofdata.io
+>
+< HTTP/1.1 200 OK
+{
+    "@id" : "http://data.webofdata.io/unis/southampton",
+    "http://data.webofdata.io/schools/name" : "Southampton"      
+}
+</pre>
 
 ### Linked Data URL Resolution
 
-Follow-your-nose semantics works by a web endpoint capturing requests for subject representations and re-writing and re-routing them to the WoD server query endpoint. The following example shows how this should work:
+Follow-your-nose URL semantics works by a web endpoint capturing requests for subject representations and re-writing and re-routing them to the WoD server query endpoint. The following example shows how this should work:
 
 <pre>
 http://data.webofdata.io/people/gra gets re-written as 
@@ -2149,16 +2214,6 @@ https://api.webofdata.io/query?subject=http://data.webofdata.io/people/gra
 
 An example NGINX config and docker image are provided at https://github.com/webofdata/linked-data.
 
-## Security, Authorisation and Authentication
-
-WoD services can be open but there are many scenarios where they need to secured and access to different operations restricted based on who is making the request. 
-
-All WoD services SHOULD be exposed over SSL connections.
-
-For internal or public endpoints that require control over what clients can do, it is recommended that authentication is performed externally from the WoD service to aquire a JWT token and that clients send this token to the service endpoint in the header to provide the set of claims and confirm they are allowed to perform the operation they are invoking.
-
-The mechanisms to authenticate and aquire a JWT or similar client token is not specified here. However, to faciltate a common understanding of core WoD claims the following claim structure is defined. This provides a common vocabulary for describing WoD claims.
-
 ## Conformance
 
 It is not possible to define conformance for a data model, conformance can only be defined in terms of observable actions and responses. 
@@ -2166,33 +2221,6 @@ It is not possible to define conformance for a data model, conformance can only 
 The automated conformance test suite can be run against any WoD node that claims to implement the protocol and serialisation parts of this specification. 
 
 The conformance client can be found online at http://github.com/webofdata/conformance. It includes source code and instructions for running the conformance test suite.
-
-## Node Identity Resolution Service (NIRS)
-
-The distributed node identity resolution service (NIRS) provides a way for WoD service instances to register their service endpoints against logical identifiers.
-
-NIRS is a protocol implemented to provide Node resolution. A client can ask a NIRS node about a given service identifier and it resolves that to a specific URL endpoint.
-
-NIRS implementations can be chained together to give distributed resolution. The root NIRS service is a scaled out service located at `https://node-dns.webofdata.io/`
-
-Given a service endpoint at: `https://api.webofdata.io/publicdata` a client can register a this WoD instance with the following HTTP request. The body MUST be a WoD entity and the property 'wod:endpoint MUST be present.
-
-<pre>
-
-> POST /nodes HTTP/1.1
-> Host: node-dns.webofdata.io
->
-{    
-    "@id" : "https://data.webofdata.io/nodes/publicdata",
-    "wod:endpoint" : "https://api.webofdata.io/publicdata"    
-}
-
-</pre>
-
-## Subject Identity Resolution Service (SIRS)
-
-
-
 
 ## References
 
