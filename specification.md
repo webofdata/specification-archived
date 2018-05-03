@@ -283,6 +283,29 @@ An example with properties as IRIs. Both the 'foaf:name' and 'http://data.exampl
 }
 </pre>
 
+#### Property Value Rule
+
+In general, property value datatypes are conferred and inferred from the JSON datatype. However, JSON data types are limited. The set of types supported by WoD is the same as those defined by XML Schema.
+
+A client can explicitly indicate the datatype of a property value by providing a string value using the following pattern:
+
+<pre>
+
+'xsd' : 'typename' : VALUE
+
+</pre>
+
+For example:
+
+<pre>
+
+{
+    "name" : "xsd:string:Graham Moore"
+}
+
+</pre>
+
+The set of allowed types names are as defined by XML Schema datatypes. Clients are responsible for providing the local correct representation of the value.
 
 #### Context Rules
 
@@ -294,20 +317,11 @@ A context is declared using the special '@context' property. The value of the '@
 
 The "namespaces" key has a value that is a JSON object. The keys in this object correspond to the first part of a CURIE and the value (which must be a string) is the expansion.
 
-The "datatypes" key is used to define the datatypes of values based on their key. In general the datatypes are inferred from the JSON data type. However, JSON data types are limited and this mechanism allows for a greater range of basic types, via XML Schema datatypes, and also for extension types to be introduced.
-
-If a datatype is defined for a key then the value of that property MUST be either a string or a list of strings. 
-
 <pre>
   {
     "@context" : {
         "namespaces" {
           "foaf" : "http://xmlns.com/foaf/0.1/"
-        }, 
-        "datatypes" : {
-            "foaf:name"   : "xsd:string",
-            "foaf:height" : "xsd:double",
-            "foaf:dob"    : "xsd:datetime"
         }
     }
     
@@ -345,7 +359,6 @@ In both examples the 'name' property is expanded to 'http://foaf.org/schema/name
 
 </pre>
 
-
 Contexts can be defined as part of each entity serialisation, or when serialising a list of entities as the first object. It is allowed to define a context as the first entity of a list and as part of any following root entity. If there is both an array level context and an object level context any keys that are redefined in the object take precedence.
 
 If the context is defined as the first object in an array then the value of the "@id" property MUST be "@context". 
@@ -355,7 +368,7 @@ The following example shows a context definition defined as the first entity in 
   <pre>
   [
     {
-      "@id" : "@context,
+      "@id" : "@context",
       "namespaces" : {
         "foaf" : "http://xmlns.com/foaf/0.1/"
       }
@@ -399,29 +412,29 @@ If a context is defined as the first object in an array, and in an object then t
   Given:
     [
         {
-        "@id" : 
-        "namespaces" :{
+            "@id" : "@context",
+            "namespaces" :{
                 "_"      : "http://data.example.org/people/"
                 "people" : "http://data.example.org/people/"
             }
         },
 
         {
-        "@id" : "gra",
-        "@context" : {
+            "@id" : "gra",
+            "@context" : {
             "namespaces" : {
-                "people" : "http://data.example.org/person/"  
-            }
-        }
-        "people:name" : "Graham Moore"   
+                    "people" : "http://data.example.org/person/"  
+                }
+            }        
+            "people:name" : "Graham Moore"   
         }
     ]
 
-Resolves to:
+Expands to:
 
     {
-        "@id" : "http://data.example.org/people/gra",  # from default namespace
-        "http://data.example.org/person/name" : "Graham Moore" # from people expansion definition in the entity  
+        "@id" : "http://data.example.org/people/gra",  
+        "http://data.example.org/person/name" : "Graham Moore"  
     }
 </pre>
 
@@ -442,11 +455,13 @@ The following form is allowed:
 
 ## Web of Data Protocol
 
-The WoD protocol consists of a service definition and the related semantics for each operation. The operations are described in prose and swagger. The protocol is split into three distinct areas; data management, data synchronisation, and data query. 
+The WoD protocol consists of a service definition and the related semantics for each operation. The operations are described in prose and swagger. The protocol is split into three distinct areas; data management, data synchronisation, and data query.
+
+The WoD protocol intentionally covers a wide scope of data publishing, data management and data query use cases. It is perfectly acceptable for implementations to support small sections of this API and still be compliant and useful members of the web of data. The only requirement is that implementations must be consistent, e.g. if it supports 'create-dataset' operation then it must also support 'get-datasets', but another service can offer 'get-datasets' without offering 'create-datasets'. This is to be expected when some implementations are layers over existing read-only data sources. All operations are clearly marked to indicate if they are required. For operations that are not mandatory they can return a suitable 'not implemented' response. 
 
 ## Common Definitions
 
-The following type definitions are used and referenced throughout the protocol description. They are listed here just once.
+The following swagger data type definitions are used and referenced throughout the protocol description. They are listed here just once.
 
 <pre>
 
@@ -534,16 +549,6 @@ definitions:
         errormsg:
           type: "string"
         
-  MergeOperation:
-    type: "object"
-    properties:
-      id:
-        type: "string"
-      dataset:
-        type: "string"
-      status:
-        type: "string"
-
 </pre>
 
 ## Data Management
@@ -679,7 +684,7 @@ The following example shows a request that returns just one store. Only one stor
 
 ### Operation Create Store
 
-The create store operation expects a JSON object to be sent in the body of the request. The JSON object may contain a 'name' property and MUST contains an 'entity' property. The value of the 'entity' property MUST be a JSON object that is valid according to the WoD JSON specification. If the 'name' property is present it MUST contain a string value. 
+The optional create store operation expects a JSON object to be sent in the body of the request. The JSON object may contain a 'name' property and MUST contains an 'entity' property. The value of the 'entity' property MUST be a JSON object that is valid according to the WoD JSON specification. If the 'name' property is present it MUST contain a string value. 
 
 The server rejects the request if the store name is already in use, or if the id of the entity is the same as any existing store.
 
@@ -813,7 +818,7 @@ The following example shows the use of this operation:
 
 ### Operation Delete Store
 
-The 'delete-store' operation requests that the implementing WoD node deletes the store  all datasets, and any metadata associated with it. This includes the entity for the store itself.
+The optional 'delete-store' operation requests that the implementing WoD node deletes the store  all datasets, and any metadata associated with it. This includes the entity for the store itself.
 
 <pre>
 
@@ -853,7 +858,7 @@ The following example shows how to request that a store is deleted.
 
 ### Operation Update Store Entity
 
-The entity for a store can be updated by using a POST request. The body of the request contains the new representation for the store entity.
+The optional `update-store-entity` operation allows the entity for a store to be updated by using a POST request. The body of the request contains the new representation for the store entity.
 
 <pre>
 
@@ -922,7 +927,7 @@ The following example shows how to update the entity for a store. Note in this e
 
 ### Operation Create Dataset
 
-A dataset is part of a store and acts as a container for entities. A dataset can be created by sending a POST request. The entity in a dataset is the subject for that dataset and MUST be a valid WoD entity.
+A dataset is part of a store and acts as a container for entities. The optional `create-dataset` operation creates a new dataset by sending a POST request. The entity in a dataset is the subject for that dataset and MUST be a valid WoD entity.
 
 <pre>
 
@@ -1173,74 +1178,6 @@ The following example shows how to update the entity of a dataset with a PUT req
 }   
  
 </pre>
-
-### Operation Merge Dataset
-
-Starts a merge operation from a named dataset (specified in the POST body json and called Dataset B for the purposes of the formalism below) into the one addressed (Dataset A). The semantics of this operation requires:
-  - that all entities that are present in dataset B and not marked as deleted replace those in A that already exist with the same id, all other entities are added to A. 
-  - that all entities marked as deleted in B are marked as deleted in A.
-  - that all entities that exist in A but are not in B are marked as deleted.
-
-While the operation is in progress any writes to A should be stored and only applied after the merge has completed. Any writes to B MUST be rejected.
-
-Support for this operation MAY be provided by a server. If the server doesn't offer the merge service then it should return a operation not supported response when a client attempts to POST the merge operation.
-
-<pre>
-
-  /stores/{store-name}/datasets/{dataset-name}/merge-operations: 
-      tags:
-       - "Management"
-      summary: "Creates operation that will merge in the named dataset."
-      description: "Creates an operation that adds or updates all the entities in this dataset from those in the specified dataset."
-      operationId: "create-merge-operation"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "store-name"
-        in: "path"
-        description: "store name"
-        required: true
-        type: "string"
-      - name: "dataset-name"
-        in: "path"
-        description: "dataset name"
-        required: true
-        type: "string"
-      - name: "merge-operation"
-        in: "body"
-        schema:
-          $ref: "#/definitions/MergeOperation"
-      responses:
-        201:
-          description: "Merge operation created"
-        400:
-          description: "Referenced dataset does not exist"
-        404:
-          description: "Store or dataset not found"
-        501:
-          description: "Merge is not supported on this dataset"
-</pre>
-
-The following example shows how to send a merge request to a dataset. Note that the server is responsible to generating the id of the merge operation.
-
-<pre>
-
-> PUT /stores/store1/datasets/dataset1 HTTP/1.1
-> Host: api.webofdata.io
->
-{ 
-    "dataset" : "dataset2"    
-}  
-
-< HTTP/1.1 201 Created
-< Location: /stores/store1/datasets/dataset1/merge-operations/merge1
-{ 
-  "id" : "merge1", 
-  "status" : "in-progress"
-}   
- 
-</pre>
-
 
 ### Operation Delete Dataset
 
@@ -2047,11 +1984,6 @@ The query endpoint can take a variety of query parameters that allow a client to
           required: false
           type: "string"
           description: "Repeatable parameter that indicates which datasets should be queried. If no values are specified then all datasets are used."
-        - name: "sameas"
-          in: "query"
-          required: false
-          type: "boolean"
-          description: "By default this is false. If provided, and if true then the server should attempt to resolve all wod:sameas links (across the specified datasets) of the subject, and any entities in the result set."
         - name: "nextdata"
           in: "query"
           required: false
@@ -2094,8 +2026,6 @@ To query for a single entity by its subject identifier use the 'subject' query p
 }
 
 </pre>
-
-The 'sameas' query parameter can also be used to instruct the server to resolve any 'wod:sameas' references. If the value of the 'sameas' query parameter is 'true' then any entities located by 'wod:sameas' property values are merged into the resulting entity.
 
 ### Query for Connected Subjects
 
@@ -2151,8 +2081,7 @@ The following example shows a client, server interchange with the client request
 
 The 'nextdata' query token can not be used with any other query parameters.
 
-
-The initial request for related entities and a result 'pagesize' of one, and then a response, along with the 'x-wod-next-data' header for more data.
+The following example shows an initial request for related entities and a result 'pagesize' of one, and then a response, along with the 'x-wod-next-data' header for more data.
 
 <pre>
 > GET /query?subject=http://data.webofdata.io/people/gra&connected=*&pagesize=1 HTTP/1.1
