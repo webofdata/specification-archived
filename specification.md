@@ -43,7 +43,7 @@ The WoD APIs are refinement of things like OData, Linked Data Fragments and SDSh
 
 WebOfData defines a data model, a JSON serialistion for the data model, a data access protocol (Query), a data sharing protocol (Synchronisation) and a data management protocol (CRUD). Compliant implementations can choose which of the APIs they support, but must adhere to the rules and semantics of the data model and serialisation definition. 
 
-Software that implemention these protocols and adheres to the serialisation representations are called WoD nodes. The potential set of services that can connect these WoD nodes together is what makes the WoD protocol exciting for the web at large and organisations looking to get control of their data. 
+Software that implements these protocols and adheres to the serialisation representations are called WoD nodes. The potential set of services that can connect these WoD nodes together is what makes the WoD protocol exciting for the web at large and organisations looking to get control of their data. 
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 
@@ -86,25 +86,39 @@ As well as entities there are two levels of container types. The store and the d
 Entities are the core of the data model. The following definition describes the structure of an entity.
 
 <pre>
-entity             := { id, members }
+entity               := { id, properties }
 
-child-entity       := { id, members } | { members }
+child-entity         := { id, properties } | { properties }
 
-id                 := xsd:uri
+id                   := xsd:uri
 
-members            := pair | pair, members
+properties           :=   key-val-pair | key-val-pair, properties
 
-pair               := xsd:uri : value 
+key-val-pair         := xsd:uri , value 
+value                := child-entity | xsd:string |
+                        xsd:int | xsd:datetime | xsd:uri | xsd:double |       
+                        xsd:float | subject-ref
 
-value              := entity | child-entity | subject-ref | xsd:string |
-                      xsd:int | xsd:datetime | xsd:uri | xsd:double |       
-                      xsd:float
+subject-ref          := xsd:uri
                       
-subject-ref        := xsd:uri
-
 </pre>
 
 One of the key things to note is that a root-entity must have a id. Descendent entities are not required to have an id. If a child entity has an id it is implied that the entity has been embedded into the structure, but also has identity in its own right. Only the identity of the root conveys the subject identity of the entity.
+
+Another key thing to note is that when querying for incoming references (e.g. those that point to an entity) only references of the root entity should be considered. 
+
+We will come to serialisation later, but to give a feel of what the model above looks like when serialised in JSON the following example is provided.
+
+<pre>
+
+{
+  "@id" : "ns1:gra",
+  "foaf:name" : "Graham Moore"
+  "rdf:type" : "&lt;schemaorg:Person&gt;",
+  "foaf:friendof" : "&lt;people:kal&gt;"
+}
+
+</pre>
 
 ### DataSets
 
@@ -146,48 +160,48 @@ The rules for merging two entity representations of the same subject are defined
  
 To merge two subject representations A and B the following algorithm should be applied:
 
-  - Let A and B be the two representations to be merged.
-  - Create a new empty representation, C.
+  - Let A and B be the two entity representations to be merged.
+  - Create a new empty entity representation, C.
   - The "id" property of C becomes the value of the "id" property of A.
-  - For each property in A if there is no corresponding property in B add it to C.
-  - For each property in A if there is a corresponding property in B then merge the values:
-    - If either of A or B properties are a list then they are merged by flattening them into one list: e.g. [a, b, c][d, e] becomes [a,b,c,d,e], and [ {}, [], "d"], "x" becomes: [ {}, [], "d", "x" ]. 
-    - For non list values a new list is created and the values from A and B are added. e.g. {}, "x" becomes: [ {}, "x" ]
+  - For each property (key and value) in A if there is no corresponding property (same key) in B add it to C.
+  - For each property in A if there is a corresponding property in B (same key) then merge the values:
+    - If either of property values are a list then they are merged by flattening them into one list: e.g. [a, b, c][d, e] becomes [a,b,c,d,e], and [ {}, [], "d"], "x" becomes: [ {}, [], "d", "x" ]. 
+    - For non list values a new list is created and the values from the property in A and B are added. e.g. {}, "x" becomes: [ {}, "x" ]
     - Duplicates are removed.
+    - Add the merged value onto C
   - All properties on B that are not present on A are added to C.
  
-
 #### SameAs Resolution
 
 The above merging semantics define the formalism for merging two entities with the same subject identifier. In addition, the sameas resolution rule defines how a WoD server can recursively merge a set of entities that declare themselves to be the same.
 
-This behaviour is optional in that a server MAY offer this capability, and even in the case when it does then the client MUST specifically request it.
+This behaviour is optional and a server MAY offer this capability. Even in the case when it does offer this capability the client MUST specifically request it.
 
-Given a subject identifier, find the entity that corresponds to that URI. Locate the 'wod:sameas' property and for each 'subject-ref' value in the array look up and merge that entity according to the rules above.
+Given a subject identifier, find the entity that corresponds to that URI. Locate the 'wod:sameas' reference-property and for each 'subject-ref' value in the array look up and merge that entity according to the rules above.
 
 Recursively apply this rule to each entity referenced by a wod:sameas value, but only process each entity once.
 
 ## Data Model JSON Serialisation
 
-JSON is used as the serialisation format for the Data Model. It defines how an instance of the data model can be serialised as JSON. The serialisation does not use any extensions to the JSON language, a valid WoD Data Model JSON document is a valid JSON document, but it is not true that any JSON document is a valid WoD JSON document.
+JSON is used as the serialisation format for the Data Model. It defines how an instance of the entity data model can be serialised as JSON. The serialisation does not use any extensions to the JSON language, a valid WoD Data Model JSON document is a valid JSON document, but it is not true that any JSON document is a valid WoD JSON document.
 
 ### Core Rules
 
 The <b>id</b> property of the entity is serialised with the key <b>@id</b>.
 
-The <b>subject-ref</b> URI values are serialised with <b><</b> as the first character and <b>></b> as the last character. The enclosing value is the string representation of a CURIE or URI.
-
-While full URIs can be used in WoD Json documents as keys, values and id property values, it is optimal for machines and easier for humans if full URIs are replaced with CURIEs. Contexts definitions are used to define default namespaces, CURIEs. The datatypes of property values can also be defined in a context.
+While full URIs can be used in WoD Json documents as keys, values and id property values, it is optimal for machines and easier for humans if full URIs are replaced with CURIEs. Context definitions are used to define default namespaces and CURIE expansions.
 
 The following rules define how JSON data must be written in order to be considered valid WoD JSON.
 
 #### The @id Property Rule
 
-The <b>@d</b> property of the entity is serialised as key of <b>@id</b>. The value of this property defines the identifier for the entity. This property MUST be present on the root JSON object. The value of this property can be an full URI or a CURIE. If it is neither of these two then it is interpreted in relation to the default context (see context resolution).
+The <b>@id</b> property of the entity is serialised as key of <b>@id</b>. The value of this property defines the identifier for the entity. This property MUST be present on the root JSON object. The value of this property can be an full URI or a CURIE. If it is neither of these two then it is interpreted in relation to the default context (see context resolution).
 
 The following examples show the different serialisations that are all semantically equivalent:
 
 <pre>
+  Explicit full URI:
+ 
   {
     "@id" : "http://data.webofdata.io/people/gra" 
     ...
@@ -197,21 +211,28 @@ The following examples show the different serialisations that are all semantical
 or
 
 <pre>
-  {
-    "@context" : { "namespaces" : { "people" : "http://data.webofdata.io/people/" } } ,
-    "@id" : "people:gra",
-    ... 
-  } 
+  Use of a context with prefix definition:
+  [
+    { "@id" : "@context" , { "namespaces" : { "people" : "http://data.webofdata.io/people/" }},
+    {
+      "@id" : "people:gra",
+      ... 
+    }     
+  ]
 </pre>
 
 or 
 
 <pre>
-  {
-    "@context" : { "_" : "http://data.example.org/people/" } ,
-    "@id" : "gra",
-    ...
-  } 
+  Use of a context with a default namespace:
+
+  [
+    { "@id" : "@context" , "namespaces"  : { "_" : "http://data.example.org/people/" }} ,
+    {
+      "@id" : "gra",
+      ...
+    }
+  ]
 </pre>
 
 The @id property can also be used on any descendant object. When used on a descendant object it gives identity to that object. It does not affect or override the identity of the root object.
@@ -234,38 +255,49 @@ This provides a way to embed or contain other subjects by value and still convey
   }
 </pre>
 
-#### Subject Reference Rule
+#### Entity Data Properties
 
-Entities can reference other subjects by their subject identifier. To represent a subject reference the '<' character MUST come at the start of the property value and '>' at the end. The value between '<' and '>' can be a full URI or a CURIE. If it is neither of these two then it is interpreted in relation to the default context (see context resolution).
+The data properties of an entity are serialised in a named dictionary called 'data'. All key value pairs in this JSON object are considered to be data properties of the entity. The keys are all either full URIs,CURIES or a simple string. If they are just a string then they are resolved to be a full URI against the default context.  
+
+The following example shows an Entity with a simple data section.
+
+<pre>
+
+[
+  { "@id" : "@context" , "namespaces"  : { "_" : "http://data.webofdata.io/people/", "foaf" : "http://foaf.org/" }} ,
+  {
+    "@id" : "gra",
+    "name" : "gra", 
+    "foaf:name" : "Graham Moore"
+  }
+] 
+
+</pre>
+
+#### Entity References
+
+Entities can reference other subjects by their subject identifier. All subject reference are collected together in the 'refs' dictionary of the entity. All values in this dictionary must be CURIES, URIS, are simple strings that are resolved against the context to a a full URI.
  
-<p>The following examples show how to use subject references: </p>
+<p>The following examples show how to subject references are serialised. It shows how references between two entities are serialised. </p>
 
 <pre>
-{
-  "@id" : "http://data.example.org/people/gra",
-  "lives-in" : "<http://data.cities.org/oslo>"
-}
-</pre>
 
-and: 
+[
+  { "@id" : "@context" , "namespaces"  : { "_" : "http://data.webofdata.io/people/", "foaf" : "http://foaf.org/" }} ,
 
-<pre>
-{
-  "@id" : "http://data.example.org/people/gra",
-  "lives-in" : [ "<http://data.cities.org/oslo>", "<http://data.cities.org/oxford>" ]
-}
-</pre>
+  {
+    "@id" : "gra",
+    "name" : "gra", 
+    "foaf:name" : "Graham Moore"
+    "education" : "&lt;http://data.webofdata.io/universities/soton&gt;"
+  },
 
-<pre>
-{
-  "@id" : "http://data.example.org/people/gra",
-  "skills" : [
-    { 
-      "name"      : "csharp", 
-      "category" : "<http://data.categories.org/programming>" 
-    }
-  ] 
-}
+  {
+    "@id" : "http://data.webofdata.io/universities/soton",
+    "address" : "southampton"
+  }
+] 
+
 </pre>
 
 #### Property Naming Rule
@@ -275,23 +307,27 @@ As well as being able to talk about 'subjects' using subject identifiers, we als
 An example with properties as IRIs. Both the 'foaf:name' and 'http://data.example.org/vocab/lives-in' are properties that will resolve to full IRIs.
 
 <pre>
-{
-  "@id" : "http://data.example.org/people/gra",
-  "@context" : { "foaf" : "http://foaf.org/schema" } ,
-  "http://data.example.org/vocab/lives-in" : "<http://data.cities.org/oslo>",
-  "foaf:name" : "Graham Moore"
-}
+
+[
+  { "@id" :   "@context" , "namespaces" : { "foaf" : "http://foaf.org/schema" , "http://data.example.org/vocab/lives-in" : "&lt;http://data.cities.org/oslo>"
+  },
+  {
+    "@id" : "http://data.example.org/people/gra",
+    "foaf:name" : "Graham Moore"
+  }
+]
+
 </pre>
 
 #### Property Value Rule
 
-In general, property value datatypes are conferred and inferred from the JSON datatype. However, JSON data types are limited. The set of types supported by WoD is the same as those defined by XML Schema.
+In general, property value datatypes are conferred by the JSON datatype. However, JSON data types are limited. The set of types supported by WoD is the same as those defined by XML Schema.
 
 A client can explicitly indicate the datatype of a property value by providing a string value using the following pattern:
 
 <pre>
 
-'xsd' : 'typename' : VALUE
+  'xsd' : 'typename' : VALUE
 
 </pre>
 
@@ -299,69 +335,29 @@ For example:
 
 <pre>
 
-{
+  {
+    ...
     "name" : "xsd:string:Graham Moore"
-}
+  }
+
+  is equivalent to:
+ 
+  {
+    ...
+    "name" : "Graham Moore"  
+  }
 
 </pre>
 
-The set of allowed types names are as defined by XML Schema datatypes. Clients are responsible for providing the local correct representation of the value.
+The set of allowed type names are as defined by XML Schema datatypes. Clients are responsible for providing the local correctly typed representation of the value.
 
 #### Context Rules
 
-All property names, '@id' property values, and subject reference values are full URIs. However, to simplify documents and avoid repeating long URI strings these values can be specified either as CURIEs or as simple values that are resolved against a base prefix defined in a context.
+All property names, '@id' property values, and reference values are full URIs in the model. However, to simplify documents and avoid repeating long URI strings these values can be specified either as CURIEs or as simple values that are resolved against a base namespace defined in a context.
 
-When a CURIE or simple value is used then they must be resolved against a context. A document collection or a single document can describe the context in which CURIEs and simple values are expanded.
+If a context is provided is should appear as the first entity in a JSON array. When defined in this way the first object in the array is an entity where the value of the "@id" property MUST be "@context". 
 
-A context is declared using the special '@context' property. The value of the '@context' property is a JSON object with two keys. The allowed keys are "namespaces" and "datatypes". 
-
-The "namespaces" key has a value that is a JSON object. The keys in this object correspond to the first part of a CURIE and the value (which must be a string) is the expansion.
-
-<pre>
-  {
-    "@context" : {
-        "namespaces" {
-          "foaf" : "http://xmlns.com/foaf/0.1/"
-        }
-    }
-    
-    "@id" : "http://data.webofdata.io/people/gra",
-    "foaf:name" : "Graham Moore",
-    "foaf:height" : "1.87",
-    "foaf:age" : 23,
-    "foaf:dob" : "1995-06-20"
-  }
-</pre>
-
-As well as CURIEs the "namespaces" object can also contain the definition of a default namespace. The default namespace is used when no CURIE prefix is used and the value is not a full URI.
-
-The default instance expansion is defined using the key of "_".
-
-The following example shows the use of the default namespace and two semantically equivalent serialisations.
-
-<pre>
-
-{
-  "@id" : "http://data.example.org/people/gra",
-  "@context" : { "foaf" : "http://foaf.org/schema/"} ,
-  "foaf:name" : "Graham Moore"
-}
-
-is the same as:
-
-{
-  "@id" : "http://data.example.org/people/gra",
-  "@context" : { "_" : "http://foaf.org/schema/"} ,
-  "name" : "Graham Moore"
-}
-
-In both examples the 'name' property is expanded to 'http://foaf.org/schema/name'
-
-</pre>
-
-Contexts can be defined as part of each entity serialisation, or when serialising a list of entities as the first object. It is allowed to define a context as the first entity of a list and as part of any following root entity. If there is both an array level context and an object level context any keys that are redefined in the object take precedence.
-
-If the context is defined as the first object in an array then the value of the "@id" property MUST be "@context". 
+The value of the '@context' property is a JSON object with a single key, "namespaces".
 
 The following example shows a context definition defined as the first entity in the array.
 
@@ -385,72 +381,46 @@ The following example shows a context definition defined as the first entity in 
   ]
 </pre>
 
-The context can also be defined as part of the entity serialisation, e.g:
+
+The "namespaces" key has a value that is a JSON object. The keys in this object correspond to the first part of a CURIE and the value (which must be a string) is the expansion.
+
+As well as CURIEs the "namespaces" object can also contain the definition of a default namespace. The default namespace is used when no CURIE prefix is used and the value is not a full URI.
+
+The default instance expansion is defined using the key of "_".
+
+The following example shows the use of the default namespace and two semantically equivalent serialisations.
 
 <pre>
+
+
+[
   {
-    "@context" : {
-      "foaf" : "http://xmlns.com/foaf/0.1/" 
-    },
+    "@id" : "@context",
+    "namespaces" : { "foaf" : "http://foaf.org/schema/"}
+  },
+
+  {
     "@id" : "http://data.example.org/people/gra",
-    "http://data.example.org/vocab/lives-in" : "<http://data.cities.org/oslo>",
     "foaf:name" : "Graham Moore"
   }
+]
 
-  Expands to:
+is the same as:
+
+[
+  {
+    "@id" : "@context",
+    "namespaces" : { "_" : "http://foaf.org/schema/"}
+  },
 
   {
     "@id" : "http://data.example.org/people/gra",
-    "http://data.example.org/vocab/lives-in" : "<http://data.cities.org/oslo>",
-    "http://xmlns.com/foaf/0.1/name" : "Graham Moore"
+    "name" : "Graham Moore"
   }
-</pre>
+]
 
-If a context is defined as the first object in an array, and in an object then the contexts are merged with the values in the object context taking precedence.
+In both examples the 'name' property is expanded to 'http://foaf.org/schema/name'
 
-<pre>
-  Given:
-    [
-        {
-            "@id" : "@context",
-            "namespaces" :{
-                "_"      : "http://data.example.org/people/"
-                "people" : "http://data.example.org/people/"
-            }
-        },
-
-        {
-            "@id" : "gra",
-            "@context" : {
-            "namespaces" : {
-                    "people" : "http://data.example.org/person/"  
-                }
-            }        
-            "people:name" : "Graham Moore"   
-        }
-    ]
-
-Expands to:
-
-    {
-        "@id" : "http://data.example.org/people/gra",  
-        "http://data.example.org/person/name" : "Graham Moore"  
-    }
-</pre>
-
-Datatype Support in property expansions. In addition to the simple form of:
-
-<pre>
-    "&lt;key&gt;" : "&lt;namespace-prefix&gt;"
-</pre>
-
-The following form is allowed:
-
-<pre>
-    &lt;key&gt; : {
-      "@id"   : "&lt;namespace-prefix&gt;",
-      "@type" : "xsd:string"  
-    }
 </pre>
 
 ## Web of Data Protocol
@@ -501,8 +471,6 @@ definitions:
       "@deleted":
         type: "boolean"
         default: false
-      "@context":
-        "$ref": "#/definitions/Context"
       "@etag":
         type: "string"
 
@@ -511,50 +479,12 @@ definitions:
     properties:
       namespaces:
         type: "object"
-      datatypes:
-        type: "object"
-
-  Transaction:
-    type: "object"
-    properties:
-      id:
-        type: "string"
-      operations:
-        type: array
-        items:
-          $ref: "#/definitions/TransactionOperation"
-
-  TransactionOperation:
-    type: "object"
-    properties:
-      dataset:
-        type: "string"
-        description: "The name of the dataset to update entities in"
-      entities:
-        type: array
-        items:
-          $ref: "#/definitions/Entity"
-
-  TransactionInfo:
-      type: "object"
-      properties:
-        id:
-          type: "string"
-        status:
-          type: "string"
-        error:
-          type: "boolean"
-        errorcode:
-          type: "string"
-        errormsg:
-          type: "string"
         
 </pre>
 
 ## Data Management
 
-The data management part of the protocol defines operations for the creation and deletion of stores and datasets, and the updating of entities within a dataset. It also defines operations for creating and monitoring transactions that span datasets.
-
+The data management part of the protocol defines operations for the creation and deletion of stores and datasets, and the updating of entities within a dataset. 
 
 ### Operation Get Service Info
 
@@ -1223,11 +1153,22 @@ The following example shows how to delete a dataset.
 
 ### Operation Get Entities
 
-A dataset contains entities. The complete set of entities (excluding those marked as deleted) in a dataset can be retrieved with the 'get-entities' operation. Responses to this request are free to stream all entities or return pages of entities and a link to the next page. 
+A dataset contains entities. The complete set of entities (optionally including those marked as deleted) in a dataset can be retrieved with the 'get-entities' operation. Responses to this request are free to stream all entities or return pages of entities and a link to the next page. 
 
 This endpoint can also be used to retrieve a specific entity from the dataset. A specific entity can be retrieved by providing an identifier as a query parameter whose value is the URI identifier of the entity.
 
 As responses to this request can be large and hard for the server to determine the size of the response in advance a server MAY choose to return pages of data or can stream all the data using a multi-part response.
+
+If a response does not contain data for all entities then the last entity in the array must be a special entity that contains a continuation token. This entity must have the id of '@continuation', and also a key 'wod:next-data'. The value of 'wod:next-data' is a string value that can be passed to subsequent calls to 'get-entites' via the 'token' query parameter.
+
+<pre>
+
+{
+    "@id" : "@continuation",
+    "wod:next-data" : "some value that allows the server to return more data"
+}
+
+</pre>
 
 <pre>
 
@@ -1500,192 +1441,33 @@ And then a client can make calls such to retrieve the data from one partition. T
 
 </pre>
 
-
-### Operation Get Transactions
-
-The 'get-transactions' operation allows a client to fetch a list of transactions that the server knows about. The status query parameter to this operation is used by the client to control which transaction objects are returned.
-
-Returns a list of transactions. The list can be filtered by the status of the transaction.  
-
-<pre>
-  /stores/{store-name}/transactions:
-    get:
-      tags:
-        - "Management"
-      summary: returns a list of transactions
-      operationId: get-transactions
-      parameters:
-        - name: "store-name"
-          in: "path"
-          description: "unique store name for this service endpoint"
-          required: true
-          type: "string"
-        - name: "status"
-          in: "query"
-          description: "one of queued, running, completed"
-          type: "string"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/TransactionInfo"
-        404:
-          description: "Store not found"
-
-</pre>
-
-The following example shows how to a get list of transactions from a store. 
-
-<pre>
-
-> GET /stores/store1/transactions HTTP/1.1
-> Host: api.webofdata.io
->
-< HTTP/1.1 200 OK
-[
-  { 
-    "id" : "txn-23", 
-    "status" : "completed"
-  },
-  {
-    "id" : "txn-24",
-    "status" : "queued"
-  }
-]
-
-</pre>
-
-To get just the completed transactions use the status query parameter:
-
-<pre>
-
-> GET /stores/store1/transactions?status=completed HTTP/1.1
-> Host: api.webofdata.io
->
-< HTTP/1.1 200 OK
-[
-  { 
-    "id" : "txn-23", 
-    "status" : "completed"
-  }
-]
-
-</pre>
-
-The query parameter can be repeated to select transactions of more than one type.
-
-<pre>
-
-> GET /stores/store1/transactions?status=completed&status=running HTTP/1.1
-> Host: api.webofdata.io
->
-< HTTP/1.1 200 OK
-[
-  { 
-    "id" : "txn-23", 
-    "status" : "completed",
-    "error" : false
-  },
-  {
-    "id" : "txn-24",
-    "status" : "running"
-  }
-]
-
-</pre>
-
-### Operation Create Transaction
-
-A client can create a transaction using the `create-transaction` operation. The server is expected to queue and then execute the transaction. The transaction consists of an array of `TransactionOperation` objects. Each of these objects has a `dataset` property that names the dataset to be updated, and a property called `entities` that contains an array of `Entity` objects. The entities should be applied to the named dataset as though they have been posted to the entities endpoint of the dataset. 
-
-<pre>
-
-  /stores/{store-name}/transactions:
-    post:
-      tags:
-        - "Management"
-      summary: Atomically updates entities across one or more datasets.
-      operationId: create-transaction
-      parameters:
-        - name: "store-name"
-          in: "path"
-          description: "unique store name for this service endpoint"
-          required: true
-          type: "string"
-        - name: "body"
-          in: "body"
-          description: "Transaction data"
-          required: true
-          schema:
-            $ref: "#/definitions/Transaction"
-      responses:
-        204:
-          description: "succesful operation"
-        404:
-          description: "Store not found"
-
-</pre>
-
-The following example shows how to create a new transaction that updates two different entities in two different datasets.
-
-<pre>
-
-> POST /stores/store1/transactions HTTP/1.1
-> Host: api.webofdata.io
->
-[
-  {
-    "dataset" : "dataset1",
-    "entities" :
-        { 
-          "@id" : "@context", 
-          "namespaces" : {
-            "products" : "http://examples.org/products/"   
-          }
-        },
-        {
-          "@id" : "products:1",
-          "products:name" : "product 1"      
-        }  
-  },
-  
-  {
-    "dataset" : "dataset2",
-    "entities" :
-        { 
-          "@id" : "@context", 
-          "namespaces" : {
-            "products" : "http://examples.org/products/"   
-          }
-        },
-        {
-          "@id" : "products:2",
-          "products:name" : "product 2"      
-        }  
-    }
-] 
-
-< HTTP/1.1 204 OK
-<
-
-</pre>
-
-
 ## Data Synchronisation
 
 The data synchronisation part of the protocol allows a client to keep a local copy of a dataset in-sync with a remote copy. It defines the service endpoint that a WoD server MUST offer and the semantics a compliant client MUST implement.
 
 The goal of the synchronisation protocol is to provide clean and simple semantics that can be implemented easily and quickly to promote the sharing of datasets. These mechanisms enable complete datasets to be shared easily, automatically and incrementally.
 
+EDITORIAL (remove)
 Allowing applications to collect and download datasets incrementally allows them to run with no dependencies on remote services. This is turn allows them to provide a guarenteed quality of service to their users, and to offer query capabilities that are not possible in a federated, distributed or client server model.
+END EDITORIAL
 
 ### Operation: Get Changes
 
 The 'get-changes' operation exposes a list of the entities that have changed in the specified dataset. Complete entity representation MUST be delivered back to the client.
 
 This operation exposes the changes that occur to a dataset. Even though an entity may have changed many times the server is not required to return all these unique states. The server is only required to return the latest representation of the entity.
+
+The last entity in the array must be a special entity that contains a continuation token. This entity must have the id of '@continuation', and also the key 'wod:next-data'. The value of 'wod:next-data' is a string value that can be passed to subsequent calls to 'get-changes' via the 'token' query parameter.
+
+<pre>
+
+{
+    "@id" : "@continuation",
+    "wod:next-data" : "token used to fetch next changes"
+}
+
+</pre>
+
 
 <pre>
 
@@ -1722,10 +1504,6 @@ This operation exposes the changes that occur to a dataset. Even though an entit
             x-wod-full-sync:
               description: if present indicates that a full sync is required. This means that all local data should be deleted and the new data arriving put in its place.
               type: boolean
-            x-wod-next-data:
-              description: A token that should be the value of the 'nextdata' query parameter the next time the client requests data.
-              type: string
-              required: true
           schema:
             type: "array"
             items:
@@ -1737,7 +1515,7 @@ This operation exposes the changes that occur to a dataset. Even though an entit
 
 </pre>
 
-The following example describes an interaction between a client and a server. The client requests changes, updates a local store or system with the new entity representations, stores the x-wod-next-data token, and then, later on, makes a get request that uses the stored x-wod-next-data token. The actual value of the x-wod-next-data header is not defined, and up to the server. Clients MUST not try and deconstruct the token, or create tokens.
+The following example describes an interaction between a client and a server. The client requests changes, updates a local store or system with the new entity representations, stores the wod:next-data value, and then, later on, makes a get request that uses the stored wod:next-data value. The actual value of the wod:next-data value is not defined, and up to the server.
 
 <pre>
 
@@ -1745,7 +1523,6 @@ The following example describes an interaction between a client and a server. Th
 > Host: api.webofdata.io
 >
 < HTTP/1.1 200 OK
-< x-wod-next-data: offset:2
 [
   { 
     "@id" : "@context", 
@@ -1760,12 +1537,16 @@ The following example describes an interaction between a client and a server. Th
   {
     "@id" : "products:2",
     "products:name" : "product 2"      
+  },
+  {
+    "@id" : "products:2",
+    "wod:next-data" : "offset:2"      
   }
 ]  
 
 </pre>
 
-A client would store the value of x-wod-next-data, in this case `offset:2` and use it in a subsequent call. Such as:
+A client would store the value of wod:next-data, in this case `offset:2` and use it in a subsequent call. Such as:
 
 <pre>
 
@@ -1783,6 +1564,10 @@ A client would store the value of x-wod-next-data, in this case `offset:2` and u
   {
     "@id" : "products:3",
     "products:name" : "product 1"      
+  },
+  {
+    "@id" : "@contiuation",
+    "wod:next-data" : "offset:3"      
   }
 ]  
 
@@ -1801,10 +1586,6 @@ The response can include a `X-WOD-FULL-SYNC` header. The header can have one of 
 
     Meaning that the client should delete all local data and replace it with what it receives. This value is true when a client first requests changes, and can also occur when the dataset on the server is deleted and re-populated. It MUST only appear in the first response, even if the data to re-populate is made available over many requests.
     
-##### X-WOD-NEXT-DATA
-
-The `X-WOD-NEXT-DATA` header MUST contain a token that can be passed to a subsequent call to 'get-changes' as the value of the 'nextdata' query parameter. 
-
 ### Deleted Subject Representations
 
 The server can include deleted entities in the response. They have the following representation:
@@ -1828,15 +1609,15 @@ A client is assumed to be storing, and keeping in sync, a local copy of a remote
 
 If the client has not yet synchronised the dataset then it must first use the 'get-changes' operation to obtain the initial data. 
 
-The response to this request will be an array of entities and a header, 'X-WOD-NEXT-DATA', that contains a token that MUST be used as the value of the 'nextdata' query paramter in a subsequent request. The client stores the entities provided in the array into a local dataset. 
+The response to this request will be an array of entities where the last entity has the id '@continuation' which has a data property of 'wod:next-data'.The value of this property MUST be used as the value of the 'nextdata' query paramter in a subsequent request.
 
-For each entity the client deletes the local representation and replaces it with the new one provided. If the entity provided is marked as deleted then the client must delete the local copy. Clients should not update local entities unless there has been an actual change.
+The client stores the entities provided in the array into a local dataset. For each entity the client deletes the local representation and replaces it with the new one provided. If the entity provided is marked as deleted then the client must delete the local copy. Clients should not update local entities unless there has been an actual change. If there is no difference between the local representation and the one provided in the entity then the client is free to not modify the local representation. 
 
-The client MUST store the value of `X-WOD-NEXT-DATA` header value only after it has committed the changes indicated by the entities in the response. 
+The client MUST store the value of `wod:next-data` property only after it has committed the changes indicated by the entities in the response. 
 
-A client can then keep making calls and then storing the tpken in the 'X-WOD-NEXT-DATA' header until no more data is available. 
+A client can then keep making calls and then storing the value in the 'wod:next-data' header until no more data is available. 
 
-At subsequent further intervals a client should use the stored `X-WOD-NEXT-DATA` token and a requst to 'get-changes' to determine if there are any changes to the dataset. 
+At subsequent further intervals a client should use the stored `wod:next-data` value and a requst to 'get-changes' to determine if there are any changes to the dataset. 
 
 Clients are free to use their own schedule for calling 'get-changes'.
 
@@ -1912,7 +1693,6 @@ These tokens can then be used to initiate calls to `get-changes` such as:
 > Host: api.webofdata.io
 >
 < HTTP/1.1 200 OK
-< x-wod-next-data: partition:0:2
 [
   { 
     "@id" : "@context", 
@@ -1927,6 +1707,12 @@ These tokens can then be used to initiate calls to `get-changes` such as:
   {
     "@id" : "products:2",
     "products:name" : "product 2"      
+  },
+  {
+    "@id" : "@continuation",
+    "@data" : {
+      "wod:next-data" : "partition:0:2"
+    }
   }
 ]  
 
@@ -2035,6 +1821,8 @@ The starting point for the traversal is specified using the 'subject' query para
 
 The result of this query can be many results (e.g. when navigating from a type to it's instances or from a category to it's members.) The server is free to return a subset of the full results along with a token that can be used to fetch more data.
 
+Any entities with the same subject identifier should be merged. 
+
 The following example shows how to get all entities related (via outgoing connections) to the entity identified with a subject identifier.
 
 <pre>
@@ -2077,7 +1865,7 @@ If the number of results to be returned is more than the server wishes to provid
 
 A client can request a number of results to return, but the server is free to ignore this. Servers typically ignore this request when the number is higher than the maximum number of results that the server is prepared to return.
 
-The following example shows a client, server interchange with the client requesting a small number of results and the server returning the requested number along with a 'wod-next-data' header whose value can then be used with the 'nextdata' query parameter to retreive more results. 
+The following example shows a client server interchange with the client requesting a small number of results and the server returning the requested number along with a continuation entity containing a 'wod:next-data' property whose value can then be used with the 'nextdata' query parameter to retreive more results. 
 
 The 'nextdata' query token can not be used with any other query parameters.
 
@@ -2088,11 +1876,23 @@ The following example shows an initial request for related entities and a result
 > Host: api.webofdata.io
 >
 < HTTP/1.1 200 OK
-< X-WOD-NEXT-DATA: http://data.webofdata.io/people/gra::connected=*::pagesize=1::from=1
-{
+[
+  {
+    "@id" : "@context",
+    ...
+  }
+  {
     "@id" : "http://data.webofdata.io/schools/stbarts",
     "http://data.webofdata.io/schools/name" : "st barts"      
-}
+  },
+  {
+    "@id" : "@continuation",
+    "@data" : {
+      "wod:next-data" : "http://data.webofdata.io/people/gra::connected=*::pagesize=1::from=1"
+    }
+  }
+]
+
 </pre>
 
 Then a subsequent request using the token provided. Note that tokens are opaque and a client should not try and generate or modify tokens. 
