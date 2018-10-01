@@ -1615,7 +1615,7 @@ The client stores the entities provided in the array into a local dataset. For e
 
 The client MUST store the value of `wod:next-data` property only after it has committed the changes indicated by the entities in the response. 
 
-A client can then keep making calls and then storing the value in the 'wod:next-data' header until no more data is available. 
+A client can then keep making calls and then storing the value in the 'wod:next-data' property until no more data is available. 
 
 At subsequent further intervals a client should use the stored `wod:next-data` value and a requst to 'get-changes' to determine if there are any changes to the dataset. 
 
@@ -1726,7 +1726,7 @@ The WebOfData Query operations are designed to facilitate the retrieval of the r
 
 The protocol is intended to work both in controlled (secure, closed networks) and open environments (on the web). It separates the use of URIs as identifiers from the use of URLs as references to resolvable resource representations.
 
-Some WoD nodes are exposing datasets that require understanding by humans. These are often bootstrapping vocabularies or schema terms that are the basis for other applications. They are also starting points for further traversal in the web of data. The query interface provides simple but inclusive means to locate subject entities by name or description.
+Some WoD nodes are exposing datasets that require understanding by humans. These are often bootstrapping vocabularies or schema terms that are the basis for other applications. They are also starting points for further traversal in the web of data. The query interface provides a simple means to locate subject entities by name or description.
 
 ## Query Operation
 
