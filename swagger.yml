@@ -24,9 +24,7 @@ paths:
         200:
           description: "successful operation"
           schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/ServiceInfo"
+            $ref: "#/definitions/ServiceInfo"
 
   /stores:
     get:
@@ -70,7 +68,7 @@ paths:
         201:
           description: "successful operation - store created"
           schema:
-            $ref: "#/definitions/Entity"
+            $ref: "#/definitions/Store"
         400:
           description: "Occurs when the store passed in the body is invalid or missing"
 
@@ -111,7 +109,7 @@ paths:
           type: "string"
       responses:
         200:
-          description: "successful operation"
+          description: "successful operation - store deleted."
         404:
           description: "store not found"
 
@@ -167,27 +165,17 @@ paths:
           required: false
           type: "boolean"
           description: "Used in combination with connected to indicate if the subject is the source or the target of the connections to be found. Default value is false."
-        - name: "text"
-          in: "query"
-          required: false
-          type: "string"
-          description: "Can only be used in conjunction with the dataset query parameter. Searches for subjects whose wod:title or wod:description property values contain the value of the text expression"
         - name: "dataset"
           in: "query"
           required: false
           type: "string"
           description: "Repeatable parameter that indicates which datasets should be queried. If no values are specified then all datasets are used."
-        - name: "sameas"
-          in: "query"
-          required: false
-          type: "boolean"
-          description: "By default this is false. If provided, and if true then the server should attempt to resolve all wod:sameas links (across the specified datasets) of the subject, and any entities in the result set."
         - name: "nextdata"
           in: "query"
           required: false
           type: "string"
           description: "Can not be used with any other query parameters. The value of this query parameter should be values returned as the x-wod-next-data header from a prior query. The server is responsible for encoding into the token enough information to provide the next set of results."
-        - name: "pagesize"
+        - name: "take"
           in: "query"
           required: false
           type: "integer"
@@ -206,55 +194,6 @@ paths:
         404:
           description: "Store or dataset not found"
 
-
-  /stores/{store-name}/transactions:
-    post:
-      tags:
-        - "Management"
-      summary: Atomically updates entities across one or more datasets.
-      operationId: create-transaction
-      parameters:
-        - name: "store-name"
-          in: "path"
-          description: "unique store name for this service endpoint"
-          required: true
-          type: "string"
-        - name: "body"
-          in: "body"
-          description: "Transaction data"
-          required: true
-          schema:
-            $ref: "#/definitions/Transaction"
-      responses:
-        200:
-          description: "succesful operation"
-        404:
-          description: "Store not found"
-
-    get:
-      tags:
-        - "Management"
-      summary: returns a list of transactions
-      operationId: get-transactions
-      parameters:
-        - name: "store-name"
-          in: "path"
-          description: "unique store name for this service endpoint"
-          required: true
-          type: "string"
-        - name: "status"
-          in: "query"
-          description: "one of running, queued, completed"
-          type: "string"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/TransactionInfo"
-        404:
-          description: "Store not found"
 
   /stores/{store-name}/datasets:
     get:
@@ -458,14 +397,10 @@ paths:
         - name: "nextdata"
           in: "query"
           type: "string"
-          description: "A token used to retrieve more data. Tokens are provided as a result of calling get-entities-partitions or as a value in the X-WOD-NEXT-DATA response header."
+          description: "A token used to retrieve more data. Tokens are provided as a result of calling get-entities-partitions or as a value in continuation entity of a response."
       responses:
         200:
           description: "successful operation"
-          headers:
-            x-wod-next-data:
-              description: "if present indicates to the client that there is more data to be retreived. Use the value of this header as the value of the 'nextdata' query parameter to retreive more data."
-              type: "string"
           schema:
             type: "array"
             items:
@@ -539,28 +474,27 @@ paths:
           in: "path"
           type: "string"
           required: true
-        - name: "dataset-id"
+        - name: "dataset-name"
           in: "path"
           type: "string"
           required: true
-        - name: "since"
+        - name: "nextdata"
           in: "query"
-          description: "A token that the service interprets in order to only return changes that have occurred since that point."
+          description: "A token that the service interprets in order to only return changes that have occurred since that point. These or tokens are provided by a call to get-changes-partitions or as the value in the continuation entity in responses to this operation."
           required: false
           type: "string"
       responses:
         200:
           description: "successful operation"
           headers:
+            x-wod-change-count:
+              required: false
+              description: if present indicates the number of changes that server has at this point in time in the specified dataset.          
             x-wod-full-sync:
+              required: false
               description: if present indicates that a full sync is required. This means that all local data should be deleted and the new data arriving put in its place.
-              type: string
-            x-wod-next-page:
-              description: if present indicates to the client that there is more data to be retreived
-              type: string
-            x-wod-next-request:
-              description: if present it is the url that should be used the next time the client wishes to retrieve changes.
-              type: string
+              type: boolean
+              default: false
           schema:
             type: "array"
             items:
@@ -639,53 +573,6 @@ definitions:
       "@deleted":
         type: "boolean"
         default: false
-      "@context":
-        "$ref": "#/definitions/Context"
       "@etag":
         type: "string"
 
-  Context:
-    type: "object"
-    properties:
-      namespaces:
-        type: "object"
-      datatypes:
-        type: "object"
-
-  Transaction:
-    type: "object"
-    properties:
-      id:
-        type: "string"
-      operations:
-        type: "array"
-        items:
-          $ref: "#/definitions/TransactionOperation"
-
-  TransactionOperation:
-    type: "object"
-    properties:
-      dataset:
-        type: "string"
-        description: "The name of the dataset to update entities in"
-      ignore-etags:
-        type: "boolean"
-        description: "Indicates if etags should be ignored"
-      entities:
-        type: array
-        items:
-          $ref: "#/definitions/Entity"
-
-  TransactionInfo:
-    type: "object"
-    properties:
-      id:
-        type: "string"
-      status:
-        type: "string"
-      error:
-        type: "boolean"
-      errorcode:
-        type: "string"
-      errormsg:
-        type: "string"

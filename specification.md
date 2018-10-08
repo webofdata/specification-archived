@@ -61,7 +61,7 @@ As well as entities there are two levels of container types. The store and the d
 
 <dl>
   <dt>Subject</dt>
-  <dd>A concept, an idea, a thing; any thing, about which anything can be said. Note that a subject is not part of the data model, but a logically related concept.</dd>
+  <dd>A concept, an idea, a thing; any thing, about which anything can be said.</dd>
 
   <dt>Subject Identifier</dt>
   <dd>A URI used to identify a subject.</dd>
@@ -113,7 +113,7 @@ We will come to serialisation later, but to give a feel of what the model above 
 
 {
   "@id" : "ns1:gra",
-  "foaf:name" : "Graham Moore"
+  "foaf:name" : "Graham Moore",
   "rdf:type" : "&lt;schemaorg:Person&gt;",
   "foaf:friendof" : "&lt;people:kal&gt;"
 }
@@ -124,7 +124,7 @@ We will come to serialisation later, but to give a feel of what the model above 
 
 A dataset is a collection of entities. It provides a container where entities can be managed (created, deleted, updated, located). 
 
-Datasets can contain as most one entity with any given subject identifier. This means that the subject identifier is the unique key for an entity in a dataset. But, an entity with the same subject identifier can exist in other datasets.
+Datasets can contain at most one entity with any given subject identifier. This means that the subject identifier is the unique key for an entity in a dataset. However, an entity with the same subject identifier can exist in other datasets.
 
 Splitting the store into datasets allows for more than one representation of the same subject (an entity with the same subject identifier as another entity) to exist in a single store. 
 
@@ -140,9 +140,9 @@ entities       := [] | entity, entities
 
 </pre>
 
-### Entity Store
+### Store
 
-An entity store is a collection of datasets. The store is defined as follows:
+A store is a collection of datasets. The store is defined as follows:
 
 <pre>
 
@@ -189,7 +189,7 @@ JSON is used as the serialisation format for the Data Model. It defines how an i
 
 The <b>id</b> property of the entity is serialised with the key <b>@id</b>.
 
-While full URIs can be used in WoD Json documents as keys, values and id property values, it is optimal for machines and easier for humans if full URIs are replaced with CURIEs. Context definitions are used to define default namespaces and CURIE expansions.
+While full URIs can be used in WoD JSON documents as keys, values and id property values, it is optimal for machines and easier for humans if full URIs are replaced with CURIEs. Context definitions are used to define default namespaces and CURIE expansions.
 
 The following rules define how JSON data must be written in order to be considered valid WoD JSON.
 
@@ -473,12 +473,6 @@ definitions:
         default: false
       "@etag":
         type: "string"
-
-  Context:
-    type: "object"
-    properties:
-      namespaces:
-        type: "object"
         
 </pre>
 
@@ -505,9 +499,7 @@ This operation returns information about the service endpoint itself. The respon
         200:
           description: "successful operation"
           schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/ServiceInfo"
+            $ref: "#/definitions/ServiceInfo"
 
 </pre>
 
@@ -644,7 +636,7 @@ The operation is defined as follows:
         201:
           description: "successful operation - store created"
           schema:
-            $ref: "#/definitions/Entity"
+            $ref: "#/definitions/Store"
         400:
           description: "Occurs when the store passed in the body is invalid or missing"
 
@@ -723,6 +715,8 @@ The 'get-store' operation retrieves the store entity using the local store name.
           description: "successful operation"
           schema:
             $ref: "#/definitions/Store"
+        404:
+          description: "store not found"
 
 </pre>
 
@@ -767,7 +761,7 @@ The optional 'delete-store' operation requests that the implementing WoD node de
           type: "string"
       responses:
         200:
-          description: "successful operation"
+          description: "successful operation - store deleted."
         404:
           description: "Store not found"
 
@@ -788,7 +782,7 @@ The following example shows how to request that a store is deleted.
 
 ### Operation Update Store Entity
 
-The optional `update-store-entity` operation allows the entity for a store to be updated by using a POST request. The body of the request contains the new representation for the store entity.
+The `update-store-entity` operation allows the entity for a store to be updated by using a POST request. The body of the request contains the new representation for the store entity.
 
 <pre>
 
@@ -830,26 +824,17 @@ The following example shows how to update the entity for a store. Note in this e
 > Host: api.webofdata.io
 >
 { 
-  "@context": {
-    "namespaces" : {
-      "test" : "http://example.org/"
-    }
-  },
   "@id"       : "http://data.webofdata.io/publishing/newidentifier",
-  "test:name" : "This store is very important"      
+  "http://data.webofdata.io/schema/name" : "This store is very important"      
 }  
+
 < HTTP/1.1 200 OK
 <
 { 
   "name" : "store1", 
   "entity" : {
-    "@context": {
-        "namespaces" : {
-            "ns1" : "http://example.org/"
-        }
-    },
     "@id"      : "http://data.webofdata.io/publishing/newidentifier",
-    "ns1:name" : "This store is very important"      
+    "http://data.webofdata.io/schema/name" : "This store is very important"      
   }
 }  
  
@@ -1199,14 +1184,10 @@ If a response does not contain data for all entities then the last entity in the
         - name: "nextdata"
           in: "query"
           type: "string"
-          description: "A token used to retrieve more data. Tokens are provided as a result of calling get-entities-partitions or as a value in the X-WOD-NEXT-DATA response header."
+          description: "A token used to retrieve more data. Tokens are provided as a result of calling get-entities-partitions or as a value in the continuation entity of a response to this operation."
       responses:
         200:
           description: "successful operation"
-          headers:
-            x-wod-next-data:
-              description: "if present indicates to the client that there is more data to be retreived. Use the value of this header as the value of the 'nextdata' query parameter to retreive more data."
-              type: "string"
           schema:
             type: "array"
             items:
@@ -1493,7 +1474,7 @@ The last entity in the array must be a special entity that contains a continuati
         type: "string"
       - name: "nextdata"
         in: "query"
-        description: "If provided it is used by the server to compute which are the next entities to return. If omitted indicates that the client wishes to receive all changes."
+          description: "A token that the service interprets in order to only return changes that have occurred since that point. These or tokens are provided by a call to get-changes-partitions or as the value in the continuation entity in responses to this operation."
         type: "string"
       responses:
         200:
@@ -1504,6 +1485,7 @@ The last entity in the array must be a special entity that contains a continuati
             x-wod-full-sync:
               description: if present indicates that a full sync is required. This means that all local data should be deleted and the new data arriving put in its place.
               type: boolean
+              default: false
           schema:
             type: "array"
             items:
@@ -1539,7 +1521,7 @@ The following example describes an interaction between a client and a server. Th
     "products:name" : "product 2"      
   },
   {
-    "@id" : "products:2",
+    "@id" : "@continuation",
     "wod:next-data" : "offset:2"      
   }
 ]  
@@ -1760,11 +1742,6 @@ The query endpoint can take a variety of query parameters that allow a client to
           required: false
           type: "boolean"
           description: "Used in combination with connected to indicate if the subject is the source or the target of the connections to be found. Default value is false."
-        - name: "text"
-          in: "query"
-          required: false
-          type: "string"
-          description: "Can only be used in conjunction with the dataset query parameter. Searches for subjects whose wod:title or wod:description property values contain the value of the text expression"
         - name: "dataset"
           in: "query"
           required: false
@@ -1775,7 +1752,7 @@ The query endpoint can take a variety of query parameters that allow a client to
           required: false
           type: "string"
           description: "Can not be used with any other query parameters. The value of this query parameter should be values returned as the x-wod-next-data header from a prior query. The server is responsible for encoding into the token enough information to provide the next set of results."
-        - name: "pagesize"
+        - name: "take"
           in: "query"
           required: false
           type: "integer"
@@ -1797,7 +1774,7 @@ The query endpoint can take a variety of query parameters that allow a client to
 </pre>
 
 
-### Query for Subject by Identifier
+### Query for Entity by SubjectIdentifier
 
 To query for a single entity by its subject identifier use the 'subject' query parameter. The following example shows how to locate a single entity in any dataset in the specified store. If the same entity exists in more than one dataset then the entities MUST be merged according to the merging semantics.
 
@@ -1872,7 +1849,7 @@ The 'nextdata' query token can not be used with any other query parameters.
 The following example shows an initial request for related entities and a result 'pagesize' of one, and then a response, along with the 'x-wod-next-data' header for more data.
 
 <pre>
-> GET /query?subject=http://data.webofdata.io/people/gra&connected=*&pagesize=1 HTTP/1.1
+> GET /query?subject=http://data.webofdata.io/people/gra&connected=*&take=1 HTTP/1.1
 > Host: api.webofdata.io
 >
 < HTTP/1.1 200 OK
@@ -1888,7 +1865,7 @@ The following example shows an initial request for related entities and a result
   {
     "@id" : "@continuation",
     "@data" : {
-      "wod:next-data" : "http://data.webofdata.io/people/gra::connected=*::pagesize=1::from=1"
+      "wod:next-data" : "http://data.webofdata.io/people/gra::connected=*::take=1::from=1"
     }
   }
 ]
@@ -1898,7 +1875,7 @@ The following example shows an initial request for related entities and a result
 Then a subsequent request using the token provided. Note that tokens are opaque and a client should not try and generate or modify tokens. 
 
 <pre>
-> GET /query?token=http://data.webofdata.io/people/gra::connected=*::pagesize=1::from=1 HTTP/1.1
+> GET /query?token=http://data.webofdata.io/people/gra::connected=*::take=1::from=1 HTTP/1.1
 > Host: api.webofdata.io
 >
 < HTTP/1.1 200 OK
