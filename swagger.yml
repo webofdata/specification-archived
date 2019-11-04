@@ -460,7 +460,7 @@ paths:
         200:
           description: "successful operation"
 
-  /stores/{store-name}/datasets/{dataset-id}/changes:
+  /stores/{store-name}/datasets/{dataset-name}/changes:
     get:
       tags:
         - "Synchronisation"
@@ -487,18 +487,17 @@ paths:
         200:
           description: "successful operation"
           headers:
-            x-wod-change-count:
-              required: false
-              description: if present indicates the number of changes that server has at this point in time in the specified dataset.          
-            x-wod-full-sync:
-              required: false
-              description: if present indicates that a full sync is required. This means that all local data should be deleted and the new data arriving put in its place.
+            X-Wod-Change-Count:
+              type: integer
+              description: "If present indicates the number of changes that server has at this point in time in the specified dataset."          
+            X-wod-full-sync:
+              description: "If present indicates that a full sync is required. This means that all local data should be deleted and the new data arriving put in its place."
               type: boolean
               default: false
           schema:
             type: "array"
             items:
-              $ref: "#/definitions/Entity"
+              $ref: "#/definitions/Entity"        
         400:
           description: "Invalid since token"
 
@@ -529,6 +528,10 @@ paths:
       responses:
         200:
           description: "successful operation"
+          headers:
+            X-RateLimit-Limit:
+              type: integer
+              description: Request limit per hour.
           schema:
             type: "array"
             items:
