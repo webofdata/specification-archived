@@ -9,15 +9,25 @@ Issues : <http://github.com/webofdata/specification/issues>
 
 ## Overview
 
-Like HTML and HTTP did for machine to human communication, Web of Data (WoD) aims to provide the building blocks to allow any device or application to easily communicate, access, modify, navigate and share data at web scale. Enabling low friction, meaningful,standardised, machine-to-machine communication.
+Like HTML and HTTP did for machine to human communication, Web of Data (WoD) aims to provide the building blocks to allow any device or application to easily communicate, access, modify, navigate and share data at web scale. Enabling low friction, meaningful,standardised, and secure, machine-to-machine communication.
 
 Web of Data defines a protocol, data model, and data representation format for publishing, sharing and connecting data on the web. It is intended to be easy to implement and work at a level of generality that is widely applicable.
+
+WoD defines: 
+  - An entity-graph data model
+  - A serialisation definition for the data-model
+  - An API for dataset and entity management
+  - An API for management of binary objects
+  - An API for entity-graph navigation and lookup
+  - A protocol for dataset synchronisation
+  - A common security model
+  - A trust protocol
 
 The WoD data model has at it's core the notion of an entity. An entity has identity in the form of an IRI. An entity also has properties whose 'names' or 'keys' are also IRIs. The use of IRIs to identify things and name properties provides a powerful, web scale approach to naming. 
 
 The values of these properties can either be literals, based on XML schema data types, or complex types such as arrays, or another entity. Finally, there is a reference type. The reference type has a value that is a URI. This URI references another entity, allowing the creation of a graph of entities that can span the web.
 
-The protocol is designed to facilitate the sharing, updating, creating and publishing of collections of entities, the retrieval of a given data entity, and the navigation of connected entities. It is expected that collections of entities can exists in databases, existing applications and dedicated WoD data stores. 
+The protocol is designed to facilitate the sharing, updating, creating and publishing of collections of entities, the retrieval of a given data entity, and the navigation of connected entities. It is expected that collections of entities can exists in databases, existing applications and dedicated WoD data stores. It also provides support for the management of non-data objects; binary objects. 
 
 All kinds of applications can implement and support the protocol in meaningful ways, allowing a vast array of client applications to easily consume and use data from around the web.
 
@@ -53,9 +63,13 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## Data Model Definition
 
-The WebOfData data model can be thought of as an Entity-Graph model. Entities are complex objects of keys with values. Where keys are IRIs and values can be literals, lists of values, an entity or list of entities. In addition, a reference value type can point to (reference) another entity. This allows entities to be connected together in a graph at global scale.
+The WebOfData data model can be thought of as an Entity-Graph model. At it's core is the notion of an entity. An entity has identity in the form of an IRI. An entity also has properties whose 'names' or 'keys' are also IRIs. The use of IRIs to identify things and name properties provides a powerful, web scale approach to naming. 
 
-The value of a reference type is an IRI and not some local internal identifier. The power of this is that it can be resolved globally. It can be used to lookup the related entity from one or more API endpoints. WoD does not define where a client can resolve a reference value, but does define the capabilities that a WoD query endpoint should support.
+The values of these properties can either be literals, based on XML schema data types, or complex types such as arrays, or another entity. Finally, there is a reference type. The reference type has a value that is a URI. This URI references another entity, allowing the creation of a graph of entities that can span the web. 
+
+The value of a reference type is an IRI and not some local internal identifier. The power of this is that it can be resolved globally. It can be used to lookup a related entity from one or more API endpoints. WoD does not define where a client can resolve a reference value, but does define the capabilities that a WoD query endpoint should support.
+
+Where keys are IRIs and values can be literals, lists of values, an entity or list of entities. In addition, a reference value type can point to (reference) another entity. This allows entities to be connected together in a graph at global scale.
 
 Given that each entity is only a partial representation of a subject the data model also defines how to merge two entities. (The algorithm can be applied recursively to merge multiple representations.)
 
@@ -2045,6 +2059,30 @@ https://api.webofdata.io/query?subject=http://data.webofdata.io/people/gra
 ```
 
 An example NGINX config and docker image are provided at https://github.com/webofdata/linked-data.
+
+## Security Model
+
+As WoD has a uniform data model it is possible to define a generic security model framework that can be applied consistently. Once a client is authenticated and has a JWT the JWT should contain the id of a collection of ACLs or the ACLs themselves. 
+
+The ACLS mimic the core data structure. A short example helps convey this:
+
+```
+[
+  {
+    "rule" : "allow",
+    "actions" : [ "read", "write" ] 
+    "scope" : "*"
+  },
+  {
+    "rule" : "deny-read" 
+  }  
+]
+```
+
+## Trust Protocol
+
+The WoD trust protocol can be used in conjunction with any other trust protocol. The result of the trust 
+
 
 ## Conformance
 
