@@ -9,23 +9,24 @@ Issues : <http://github.com/webofdata/specification/issues>
 
 ## Overview
 
-Like HTML and HTTP did for machine to human communication, Web of Data (WoD) aims to provide the building blocks to allow any device or application to easily communicate, access, modify, navigate and share data at web scale. Enabling low friction, meaningful,standardised, and secure, machine-to-machine communication.
+Like HTML and HTTP did for machine to human communication, Web of Data (WoD) aims to provide the building blocks to allow any device or application to easily communicate, access, modify, navigate and share data, securely, at web scale. Enabling low friction, meaningful,standardised, and secure, machine-to-machine communication provides the foundation for public, private, and personal data communication.
 
 Web of Data defines a protocol, data model, and data representation format for publishing, sharing and connecting data on the web. It is intended to be easy to implement and work at a level of generality that is widely applicable.
 
-WoD defines: 
-  - An entity-graph data model
-  - A serialisation definition for the data-model
-  - An API for dataset and entity management
-  - An API for management of binary objects
-  - An API for entity-graph navigation and lookup
-  - A protocol for dataset synchronisation
-  - A common security model
-  - A trust protocol
+WoD defines:
 
-The WoD data model has at it's core the notion of an entity. An entity has identity in the form of an IRI. An entity also has properties whose 'names' or 'keys' are also IRIs. The use of IRIs to identify things and name properties provides a powerful, web scale approach to naming. 
+- An entity-graph data model
+- A serialisation definition for the data-model
+- An API for dataset and entity management
+- An API for entity-graph navigation and lookup
+- An API for management of binary objects
+- A protocol for dataset synchronisation
+- A common security model
+- A trust protocol
 
-The values of these properties can either be literals, based on XML schema data types, or complex types such as arrays, or another entity. Finally, there is a reference type. The reference type has a value that is a URI. This URI references another entity, allowing the creation of a graph of entities that can span the web.
+The WoD data model has at it's core the notion of an entity. An entity has identity in the form of an IRI. An entity also has properties whose 'names' or 'keys' are also IRIs. The use of IRIs to identify things and name properties provides a powerful, web scale approach to naming.
+
+The values of properties can either be literals, based on XML schema data types, or complex types such as arrays, or another entity. Finally, there is a reference type. The reference type has a value that is a URI. This IRI references another entity via its subject identifier, allowing the creation of a graph of entities that can span the web.
 
 The protocol is designed to facilitate the sharing, updating, creating and publishing of collections of entities, the retrieval of a given data entity, and the navigation of connected entities. It is expected that collections of entities can exists in databases, existing applications and dedicated WoD data stores. It also provides support for the management of non-data objects; binary objects. 
 
@@ -192,16 +193,16 @@ The rules for merging two entity representations of the same subject are defined
 
 To merge two subject representations A and B the following algorithm should be applied:
 
-  - Let A and B be the two entity representations to be merged.
-  - Create a new empty entity representation, C.
-  - The "id" property of C becomes the value of the "id" property of A.
-  - For each property (key and value) in A if there is no corresponding property (same key) in B add it to C.
-  - For each property in A if there is a corresponding property in B (same key) then merge the values:
-    - If either of property values are a list then they are merged by flattening them into one list: e.g. [a, b, c][d, e] becomes [a,b,c,d,e], and [ {}, [], "d"], "x" becomes: [ {}, [], "d", "x" ].
-    - For non list values a new list is created and the values from the property in A and B are added. e.g. {}, "x" becomes: [ {}, "x" ]
-    - Duplicates are removed.
-    - Add the merged value onto C
-  - All properties on B that are not present on A are added to C.
+- Let A and B be the two entity representations to be merged.
+- Create a new empty entity representation, C.
+- The "id" property of C becomes the value of the "id" property of A.
+- For each property (key and value) in A if there is no corresponding property (same key) in B add it to C.
+- For each property in A if there is a corresponding property in B (same key) then merge the values:
+  - If either of property values are a list then they are merged by flattening them into one list: e.g. [a, b, c][d, e] becomes [a,b,c,d,e], and [ {}, [], "d"], "x" becomes: [ {}, [], "d", "x" ].
+  - For non list values a new list is created and the values from the property in A and B are added. e.g. {}, "x" becomes: [ {}, "x" ]
+  - Duplicates are removed.
+  - Add the merged value onto C
+- All properties on B that are not present on A are added to C.
 
 #### SameAs Resolution
 
@@ -254,7 +255,7 @@ or
   ]
 ```
 
-or 
+or
 
 ``` json
   // Use of a context with a default namespace:
@@ -323,7 +324,7 @@ The following example shows an Entity with a simple data section.
 
 #### Entity References
 
-Entities can reference other subjects by their subject identifier. All subject reference are collected together in the 'refs' dictionary of the entity. All values in this dictionary must be CURIES or URIS. Simple strings that are resolved against the context to a a full URI. The following examples show how to subject references are serialised.
+Entities can reference other subjects by their subject identifier. All subject reference are collected together in the 'refs' dictionary of the entity. All values in this dictionary must be CURIES or URIS. Simple strings that are resolved against the context to a full URI. The following examples show how to subject references are serialised.
 
 ``` json
 [
@@ -411,6 +412,19 @@ is equivalent to:
   }
 ```
 
+ED NOTE: how to express the string xsd:string? xsd:string:xsd:string . Ugly but it works and its only in meta land you will do this. Alternative is to have something like:
+
+```
+{
+    "@props" : {
+      "name" :  {
+        "@datatype" : "xsd:string",
+        "value" : "Graham Moore"
+      }
+    }  
+}
+```
+
 #### Context Rules
 
 All property names, '@id' property values, and reference values are full URIs in the model. However, to simplify documents and avoid repeating long URI strings these values can be specified either as CURIEs or as simple values that are resolved against a base namespace defined in a context.
@@ -494,7 +508,7 @@ The WoD protocol intentionally covers a wide scope of data publishing, data mana
 
 ## Common Definitions
 
-The following swagger data type definitions are used and referenced throughout the protocol description. They are listed here just once.
+The following swagger data type definitions are used and referenced throughout the protocol description. They are listed here just once. Note that as the structures of entities are dynamic the swagger JSON types are copnsidered open.
 
 ``` yaml
 definitions:
@@ -530,10 +544,14 @@ definitions:
     properties:
       "@id":
         type: "string"
+      "@props":
+        type: "object"
+      "@refs":
+        type: "object"
       "@deleted":
         type: "boolean"
         default: false
-      "@etag":
+      "@meta":
         type: "string"
 ```
 
@@ -580,7 +598,7 @@ The following example shows an example request and response:
 
 ### Operation Get Stores
 
-This operation returns a list of stores being managed by the WoD node. The list of stores can be filtered by providing the id of the store as a query parameter. Note that stores have a name that forms part of the URI, but also has a metadata entity that represents the store. This entity has an id in the form of a URI and it is this value that can be used to filter the list of stores.
+This operation returns a list of stores being managed by the WoD service. The list of stores can be filtered by providing the id of the store as a query parameter. Note that stores have a name that forms part of the URI, but also has a metadata entity that represents the store. This entity has an id in the form of a URI and it is this value that can be used to filter the list of stores.
 
 
 ``` yaml
@@ -610,20 +628,19 @@ This operation returns a list of stores being managed by the WoD node. The list 
 
 The following example shows a request that returns three stores.
 
-
 Request:
 
-```
+``` http
 > GET /stores HTTP/1.1
 > Host: api.webofdata.io
 >
-< HTTP/1.1 200 OK
-<
 ```
 
-Response body:
+Response :
 
 ``` json
+< HTTP/1.1 200 OK
+<
 [
   {
     "name" : "store1",
@@ -650,17 +667,17 @@ The following example shows a request that returns just one store. Only one stor
 
 Request:
 
-```
+``` http
 > GET /stores?id=http://data.webofdata.io/publishing/store1 HTTP/1.1
 > Host: api.webofdata.io
 >
-< HTTP/1.1 200 OK
-<
 ```
 
 Response body:
 
 ``` json
+< HTTP/1.1 200 OK
+<
 [
   {
     "name" : "store1",
@@ -709,7 +726,7 @@ The operation is defined as follows:
 
 The following example shows the create store request:
 
-```
+``` http
 > POST /stores HTTP/1.1
 > Host: api.webofdata.io
 {
@@ -732,7 +749,7 @@ The following example shows the create store request:
 
 The following example shows a valid create store request where the server generates the store name.
 
-```
+``` http
 > POST /stores HTTP/1.1
 > Host: api.webofdata.io
 {
@@ -783,7 +800,7 @@ The 'get-store' operation retrieves the store entity using the local store name.
 
 The following example shows the use of this operation:
 
-```
+``` http
 > GET /stores/store1 HTTP/1.1
 > Host: api.webofdata.io
 >
@@ -871,7 +888,7 @@ The `update-store-entity` operation allows the entity for a store to be updated 
 
 The following example shows how to update the entity for a store. Note in this example that the server renames the namespace prefix. A server is free to rename or map prefixes as it sees fit. What must hold true is the fully expanded URI.
 
-```
+``` http
 > PUT /stores/store1 HTTP/1.1
 > Host: api.webofdata.io
 >
@@ -936,7 +953,7 @@ The following example shows how to create a dataset with a POST request.
 > Host: https://wod-api.example.com
 >
 { 
-  "name" : "dataset1", 
+  "name" : "dataset1",
   "entity" : {
     "@id" : "http://data.webofdata.io/publishing/store1/people"      
   }
@@ -957,7 +974,7 @@ The following example shows how to create a dataset with a POST request.
 
 ### Operation Get Datasets
 
-The operation `get-datasets` returns a list of the datasets contained in the named store. 
+The operation `get-datasets` returns a list of the datasets contained in the named store.
 
 ``` yaml
 /stores/{store-name}/datasets:
@@ -1003,7 +1020,7 @@ The following example shows how to retrieve the datasets of a store.
     }
   },
   {
-    "name" : "dataset2", 
+    "name" : "dataset2",
     "entity" : {
       "@id" : "http://data.webofdata.io/publishing/store1/products"
     }
@@ -1013,7 +1030,7 @@ The following example shows how to retrieve the datasets of a store.
 
 ### Operation Get Dataset
 
-Get a specific dataset by name. 
+Get a specific dataset by name.
 
 ``` yaml
   /stores/{store-name}/datasets/{dataset-name}:
@@ -1048,7 +1065,7 @@ Get a specific dataset by name.
 
 The following example shows how to retrieve a named dataset.
 
-```
+``` http
 > GET /stores/store1/datasets/dataset1 HTTP/1.1
 > Host: api.webofdata.io
 >
@@ -1107,7 +1124,7 @@ Updates the entity for the specified dataset.
 
 The following example shows how to update the entity of a dataset with a PUT request.
 
-```
+``` http
 > PUT /stores/store1/datasets/dataset1 HTTP/1.1
 > Host: api.webofdata.io
 >
@@ -1123,8 +1140,8 @@ The following example shows how to update the entity of a dataset with a PUT req
 
 < HTTP/1.1 200 OK
 <
-{ 
-  "name" : "dataset1", 
+{
+  "name" : "dataset1",
   "entity" : {
     "@context": {
         "namespaces" : {
@@ -1132,10 +1149,9 @@ The following example shows how to update the entity of a dataset with a PUT req
         }
     },
     "@id"       : "http://data.webofdata.io/publishing/store1/people",
-    "ns1:name" : "This dataset is very important"      
+    "ns1:name" : "This dataset is very important"
   }
-}   
- 
+}
 ```
 
 ### Operation Delete Dataset
@@ -1170,7 +1186,7 @@ A request to delete a dataset. MUST delete the dataset entity and all contained 
 
 The following example shows how to delete a dataset.
 
-```
+``` http
 > DELETE /stores/store1/datasets/dataset1 HTTP/1.1
 > Host: api.webofdata.io
 >
@@ -1240,7 +1256,7 @@ If a response does not contain data for all entities then the last entity in the
 
 The following example shows how to use the 'get-entities' operation.
 
-```
+``` http
 > GET /stores/store1/datasets/dataset1/entities HTTP/1.1
 > Host: api.webofdata.io
 >
@@ -1276,7 +1292,7 @@ If the entity specified exists then the current representation must be replaced 
 
 If entities are deleted the server must keep track of this so that the entity can appear in a get-changes response. When the entity appears in this response it MUST be marked as deleted.
 
-If an entity contains a property called '@etag' then the server can use the value of this property to decide the specified entity has been modified since this representation was retreived. If this etag value does not match that of the one in the dataset then the update is rejected.
+If an entity contains a property called '@etag' then the server can use the value of this property to decide if the specified entity has been modified since this representation was retreived. If this etag value does not match that of the one in the dataset then the update is rejected.
 
 If the etag is omitted or the 'x-wod-ignore-etags' header has a value of 'true' then the server should ignore any etag value conflicts and apply the updates.
 
@@ -1315,7 +1331,7 @@ If the etag is omitted or the 'x-wod-ignore-etags' header has a value of 'true' 
 
 The following example shows how to upload several entities to be stored in a dataset.
 
-```
+``` http
 > POST /stores/store1/datasets/dataset1/entities HTTP/1.1
 > Host: api.webofdata.io
 >
@@ -1338,12 +1354,11 @@ The following example shows how to upload several entities to be stored in a dat
       "products:name" : "product 2"
     }
   }
-] 
+]
 
 < HTTP/1.1 200 OK
 <
 ```
-
 
 ### Operation Delete Entities
 
@@ -1742,7 +1757,7 @@ When processing the changes of a dataset in parallel it is possible for any one 
 
 ## Query Operations
 
-The WebOfData Query operations are designed to facilitate the retrieval of the representation of a given entity via its subject identifier, and the retrieval of those entities that reference (are connected to), a given entity.
+The WebOfData Query operations are designed to facilitate the retrieval of the representation of a given entity via its subject identifier, the retrieval of those entities that reference (are connected to) a given entity, and those that the entity references.
 
 The protocol is intended to work both in controlled (secure, closed networks) and open environments (on the web). It separates the use of URIs as identifiers from the use of URLs as references to resolvable resource representations.
 
@@ -1831,31 +1846,33 @@ To query for a single entity by its subject identifier use the 'subject' query p
 
 ### Query for Connected Subjects
 
-To traverse a graph of connected subjects the 'connected' query parameter can be used. The value of this property can either be '*' to indicate all relationships or a URI that identifies the property type to use in traversing the graph. 
+To traverse a graph of connected subjects the 'connected' query parameter can be used. The value of this property can either be '*' to indicate all relationships or a URI that identifies the property type to use in traversing the graph.
 
-The starting point for the traversal is specified using the 'subject' query parameter. This identifies the starting point for the traversal. The value of this parameter MUST be a URI. 
+The starting point for the traversal is specified using the 'subject' query parameter. This identifies the starting point for the traversal. The value of this parameter MUST be a URI.
 
 The result of this query can be many results (e.g. when navigating from a type to it's instances or from a category to it's members.) The server is free to return a subset of the full results along with a token that can be used to fetch more data.
 
-Any entities with the same subject identifier should be merged. 
+Any entities with the same subject identifier should be merged.
 
 The following example shows how to get all entities related (via outgoing connections) to the entity identified with a subject identifier.
 
-```
+``` http
 > GET /query?subject=http://data.webofdata.io/people/gra&connected=* HTTP/1.1
 > Host: api.webofdata.io
 >
 < HTTP/1.1 200 OK
 {
     "@id" : "http://data.webofdata.io/schools/stbarts",
-    "http://data.webofdata.io/schools/name" : "st barts"      
+    "http://data.webofdata.io/schools/name" : "st barts"
 }
 ```
 
 To traverse in towards the subject rather than away from it use the 'connected' query parameter to identify the property and the 'incoming' query parameter with a value of 'true' to indicate the subject should be the target of any connections and not the source.  
 
-```
-GET /query?connected-to=&lt;uri&gt;?by=&lt;uri&gt; =&gt; returns a list of subject representations that are connected with the given subject by incoming references of the specified property name.
+``` 
+GET /query?connected-to=[uri]&by=[uri]
+
+returns a list of subject representations that are connected with the given subject by incoming references of the specified property name.
 ```
 
 Note that when querying the graph only relationships defined in the root of the entity are considered. The following entity would *not* match any outgoing or incoming queries as the only reference type is not at the root entity.
@@ -1877,17 +1894,17 @@ Note that when querying the graph only relationships defined in the root of the 
 }
 ```
 
-If the number of results to be returned is more than the server wishes to provide in one response or more than the client would like to receive then the server can return a partial result along with a token that allows the client to fetch more results. 
+If the number of results to be returned is more than the server wishes to provide in one response or more than the client would like to receive then the server can return a partial result along with a token that allows the client to fetch more results.
 
 A client can request a number of results to return, but the server is free to ignore this. Servers typically ignore this request when the number is higher than the maximum number of results that the server is prepared to return.
 
-The following example shows a client server interchange with the client requesting a small number of results and the server returning the requested number along with a continuation entity containing a 'wod:next-data' property whose value can then be used with the 'nextdata' query parameter to retreive more results. 
+The following example shows a client server interchange with the client requesting a small number of results and the server returning the requested number along with a continuation entity containing a 'wod:next-data' property whose value can then be used with the 'nextdata' query parameter to retreive more results.
 
 The 'nextdata' query token can not be used with any other query parameters.
 
 The following example shows an initial request for related entities and a result 'pagesize' of one, and then a response, along with the 'x-wod-next-data' header for more data.
 
-```
+``` http
 > GET /query?subject=http://data.webofdata.io/people/gra&connected=*&take=1 HTTP/1.1
 > Host: api.webofdata.io
 >
@@ -1899,7 +1916,7 @@ The following example shows an initial request for related entities and a result
   }
   {
     "@id" : "http://data.webofdata.io/schools/stbarts",
-    "http://data.webofdata.io/schools/name" : "st barts"      
+    "http://data.webofdata.io/schools/name" : "st barts"
   },
   {
     "@id" : "@continuation",
@@ -1911,19 +1928,18 @@ The following example shows an initial request for related entities and a result
 
 ```
 
-Then a subsequent request using the token provided. Note that tokens are opaque and a client should not try and generate or modify tokens. 
+Then a subsequent request using the token provided. Note that tokens are opaque and a client should not try and generate or modify tokens.
 
-```
+``` http
 > GET /query?token=http://data.webofdata.io/people/gra::connected=*::take=1::from=1 HTTP/1.1
 > Host: api.webofdata.io
 >
 < HTTP/1.1 200 OK
 {
     "@id" : "http://data.webofdata.io/unis/southampton",
-    "http://data.webofdata.io/schools/name" : "Southampton"      
+    "http://data.webofdata.io/schools/name" : "Southampton"
 }
 ```
-
 
 ### Query For Subject By Title and / or Description
 
@@ -1931,23 +1947,51 @@ As well as machine to machine communication WoD provides a way for humans to fin
 
 WoD defines two property types, 'wod:title' and 'wod:description'. The following search operation uses the values in these two properties to locate entities. The 'text' query parameter can only be used in conjunction with the 'dataset' query parameter.
 
-The dataset query parameter can be repeated 0 or more times to restrict the dataset in which the search is performed. If it is not provided then the search occurs across all datasets.
+The dataset query parameter can be repeated 1 or more times to restrict the dataset in which the search is performed. If it is not provided then the search occurs across all datasets.
 
-A WoD node should search in all fields of all entities that are either wod:title or wod:description. Hits in wod:title should be prioritised over those in wod:description. The quality of the search results is left up to the implementation. 
+A WoD node should search in all fields of all entities that are either wod:title or wod:description. Hits in wod:title should be prioritised over those in wod:description. The quality of the search results is left up to the implementation.
 
-The following example shows how
-```
+The following example shows how:
+
+``` http
 > GET /query?text=southampton HTTP/1.1
 > Host: api.webofdata.io
 >
 < HTTP/1.1 200 OK
 {
     "@id" : "http://data.webofdata.io/unis/southampton",
-    "http://data.webofdata.io/schools/name" : "Southampton"      
+    "http://data.webofdata.io/schools/name" : "Southampton"
 }
 ```
 
-### Linked Data URL Resolution
+## Content Management
+
+The Web of Data involves binary objects as well as data representations. Storage and management of binary objects has changed over time. The advent of object storage that decouples the physical 'file location' from the identity of the object also allows for greatly simplified data access APIs.
+
+A WoD Node that supports content management allows for any Entity to be a proxy or subject representation for a binary objects. E.g. an entity can be the proxy for a word document, or JPEG image file.
+
+To create an entity content object pair a differnet kind of request is posted to the server. It is a multi-part request that contains a WoD document with a context and an entity and then the binary content.
+
+The server stores the blob of data and assigns a unique id for the content item. The entity is updated with to show the following:
+
+```
+{
+  "@id" : "picture:mypicture1",
+  "@props" : {
+    "wod:content" : "some-guid"
+  }
+}
+```
+
+A client can retrieve the content via the Entity e.g.
+
+`api.webofdata.io/stores/s1/datasets/d1/entities/content?id="picture:mypicture"`
+
+or
+
+`api.webofdata.io/stores/s1/datasets/d1/entities/content/[some-guid]`
+
+## Linked Data URL Resolution
 
 Follow-your-nose URL semantics works by a web endpoint capturing requests for subject representations and re-writing and re-routing them to the WoD server query endpoint. The following example shows how this should work:
 
@@ -1959,11 +2003,11 @@ https://api.webofdata.io/query?subject=http://data.webofdata.io/people/gra
 
 An example NGINX config and docker image are provided at https://github.com/webofdata/linked-data.
 
-### Ontological Commitments
+## Ontological Commitments
 
 The WoD data model can be used to describe both the class and instance level of data. E.g. an Entity can represent the class person and instances of that class. It can also define property types and constraints. As well as the set of identifiers and related interpretation we define a few basic identifiers and define their meaning.
 
-#### The Type Property Type
+### The Type Property Type
 
 The `wod:type` property is used to indicate that a given entity is an instance of the referenced class. An entity can be an instance of 0 or more classes. A class is just an entity.
 
@@ -1984,7 +2028,7 @@ The following example shows how to define an individual entity to be an instance
 }
 ```
 
-#### The Class Class
+### The Class Class
 
 As a means to indicate which entities can be used as types for others it is useful to mark them. The class entity is the way to do this.
 
@@ -2008,7 +2052,7 @@ We can extend the original example above to include a type reference to the Clas
 }
 ```
 
-#### The subClassOf Property
+### The subClassOf Property
 
 The other pattern we want to support is the abilty to define a class hierarchy. 
 
@@ -2039,7 +2083,7 @@ The other pattern we want to support is the abilty to define a class hierarchy.
 }
 ```
 
-#### The Property Class
+### The Property Class
 
 In the same way that it is useful to be able to indicate which entities are classes it is also useful to indicate which entities are used as property types. The following example shows the intended usage.
 
@@ -2053,43 +2097,63 @@ In the same way that it is useful to be able to indicate which entities are clas
 }
 ```
 
-#### Entailments
+### Entailments
 
 Entailments just means `things that follow given something else`. So in terms of the WoD data model there are some inferred properties based on using the above built in properties.
 
 The following entailment MUST be respected:
 
 - wod:subClassOf is Transitive. This means that if `a wod:type B` and `B wod:subClassOf C`, then `a wod:type C` is true.
-=======
+
 ## Security Model
 
-As WoD has a uniform data model it is possible to define a generic security model framework that can be applied consistently. Once a client is authenticated and has a JWT the JWT should contain the id of a collection of ACLs or the ACLs themselves. 
+As WoD has a uniform data model it is possible to define a generic security model framework that can be applied consistently. Once a client is authenticated and has a JWT the JWT should contain the id of a collection of ACLs or the ACLs themselves.
 
 The ACLS mimic the core data structure. A short example helps convey this:
 
-```
+``` json
 [
   {
     "rule" : "allow",
-    "actions" : [ "read", "write" ] 
+    "actions" : [ "read", "write" ]
     "scope" : "*"
   },
   {
-    "rule" : "deny-read" 
+    "rule" : "deny-read"
   }  
 ]
 ```
 
 ## Trust Protocol
 
-The WoD trust protocol can be used in conjunction with any other trust protocol. 
+The WoD trust protocol is designed to allow clients to form trust between one another. Each node is able to request access to another nodes datasets. A node can issue secure client tokens that can be used to access datasets and entities of that node.
 
+The protocol defines the following terms and roles for nodes creating a trust relationship:
+
+Concepts:
+
+- client (the WoD node requesting access to another node)
+- server (the WoD node granting access to a client)
+
+The protocol works as follows:
+
+- client generates a local key pair
+- client exposes the public key at url on the WoD Node
+- client sends an access request including its url signed by its private key
+- server validates that the signed request is genuine.
+- the server decides to accept the request or not (this can be automated or done manually - different scenarios which use different strategies.)
+- the server generates a key pair for the client and stores the private key somewhere safe. 
+- the server sends a message to the client with the public key. 
+- Now every request the client sends to the server it encrypts something with the public key. The server can then verify where the request came from. (some details ommitted for now)
+- Also allow for temporary access tokens that are fetched using the client id and public key.
+
+The API for the above protocol is defined as follows. A node that is open and public can offer anonymous access. It is also fine to have other kinds of authentication that restricts access to a node.
 
 ## Conformance
 
-It is not possible to define conformance for a data model, conformance can only be defined in terms of observable actions and responses. 
+It is not possible to define conformance for a data model, conformance can only be defined in terms of observable actions and responses.
 
-The automated conformance test suite can be run against any WoD node that claims to implement the protocol and serialisation parts of this specification. 
+The automated conformance test suite can be run against any WoD node that claims to implement the protocol and serialisation parts of this specification.
 
 The conformance client can be found online at http://github.com/webofdata/conformance. It includes source code and instructions for running the conformance test suite.
 
