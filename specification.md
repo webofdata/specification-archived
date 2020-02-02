@@ -141,107 +141,6 @@ Some built in subject identifiers are of the form `wod:xxxx`. The wod expansion 
 http://data.webofdata.io/
 ```
 
-### Ontological Commitments
-
-The WoD data model can be used to describe both the class and instance level of data. E.g. an Entity can represent the class person and instances of that class. It can also define property types and constraints. As well as the set of identifiers and related interpretation we define a few basic identifiers and define their meaning.
-
-#### The Type Property Type
-
-The `wod:type` property is used to indicate that a given entity is an instance of the referenced class. An entity can be an instance of 0 or more classes. A class is just an entity.
-
-The following example shows how to define an individual entity to be an instance (or have type) of a class entity.
-
-``` json
-// we defined the class entity first
-{
-  "@id" : "schema:Person"
-}
-
-// and then the instance using the wod:type property
-{
-  "@id" : "people:gra",
-  "@refs" : {
-    "wod:type" : "schema:Person"
-  }
-}
-```
-
-#### The Class Class
-
-As a means to indicate which entities can be used as types for others it is useful to mark them. The class entity is the way to do this.
-
-We can extend the original example above to include a type reference to the Class entity.
-
-``` json
-{
-  "@id" : "schema:Person",
-  "@refs" : {
-    // we add the wod:type property that references the wod:Class entity
-    "wod:type" : "wod:Class"
-  }
-}
-
-// and then the instance using the type property
-{
-  "@id" : "people:gra",
-  "@refs" : {
-    "wod:type" : "schema:Person"
-  }
-}
-```
-
-#### The subClassOf Property
-
-The other pattern we want to support is the abilty to define a class hierarchy. 
-
-``` json
-// we create a new base class
-{
-  "@id" : "schema:Thing",
-  "@refs" : {
-    "wod:type" : "wod:Class"
-  }
-}
-
-{
-  "@id" : "schema:Person",
-  "@refs" : {
-    "wod:type" : "wod:Class",
-    // and use the subClassOf property indicate the super class of this class
-    "wod:subClassOf" : "schema:Thing"
-  }
-}
-
-// and then the instance using the type property
-{
-  "@id" : "people:gra",
-  "@refs" : {
-    "wod:type" : "schema:Person"
-  }
-}
-```
-
-#### The Property Class
-
-In the same way that it is useful to be able to indicate which entities are classes it is also useful to indicate which entities are used as property types. The following example shows the intended usage.
-
-``` json
-// the age property type can be defined as follows
-{
-  "@id" : "schema:age",
-  "@refs" : {
-    "wod:type" : "wod:PropertyClass"
-  }
-}
-```
-
-#### Entailments
-
-Entailments just means `things that follow given something else`. So in terms of the WoD data model there are some inferred properties based on using the above built in properties.
-
-The following entailment MUST be respected:
-
-- wod:subClassOf is Transitive. This means that if `a wod:type B` and `B wod:subClassOf C`, then `a wod:type C` is true.
 
 ### DataSets
 
@@ -1666,19 +1565,19 @@ A client would store the value of `next`, in this case `offset:2` and use it in 
 < HTTP/1.1 200 OK
 [
   {
-    "@id" : "@context",
+    "id" : "@context",
     "namespaces" : {
       "products" : "http://examples.org/products/"
     }
   },
   {
-    "@id" : "products:3",
-    "@props" : {
+    "id" : "products:3",
+    "props" : {
       "products:name" : "product 3"
     }
   },
   {
-    "@id" : "@contiuation",
+    "id" : "@contiuation",
     "next" : "offset:3"
   }
 ]
@@ -1703,13 +1602,13 @@ The server can include deleted entities in the response. They have the following
 ``` json
   [
     {
-      "@id"      : "...",
-      "@deleted" : true
+      "id"      : "...",
+      "deleted" : true
     }
   ]
 ```
 
-The "@id" property and the "@deleted" property MUST be included. The server MAY provide the rest of the deleted entity data.
+The "id" property and the "deleted" property MUST be included. The server MAY provide the rest of the deleted entity data.
 
 ### Client Semantics
 
@@ -2045,6 +1944,110 @@ https://api.webofdata.io/query?subject=http://data.webofdata.io/people/gra
 ```
 
 An example NGINX config and docker image are provided at https://github.com/webofdata/linked-data.
+
+
+### Ontological Commitments
+
+The WoD data model can be used to describe both the class and instance level of data. E.g. an Entity can represent the class person and instances of that class. It can also define property types and constraints. As well as the set of identifiers and related interpretation we define a few basic identifiers and define their meaning.
+
+#### The Type Property Type
+
+The `wod:type` property is used to indicate that a given entity is an instance of the referenced class. An entity can be an instance of 0 or more classes. A class is just an entity.
+
+The following example shows how to define an individual entity to be an instance (or have type) of a class entity.
+
+``` json
+// we defined the class entity first
+{
+  "@id" : "schema:Person"
+}
+
+// and then the instance using the wod:type property
+{
+  "@id" : "people:gra",
+  "@refs" : {
+    "wod:type" : "schema:Person"
+  }
+}
+```
+
+#### The Class Class
+
+As a means to indicate which entities can be used as types for others it is useful to mark them. The class entity is the way to do this.
+
+We can extend the original example above to include a type reference to the Class entity.
+
+``` json
+{
+  "@id" : "schema:Person",
+  "@refs" : {
+    // we add the wod:type property that references the wod:Class entity
+    "wod:type" : "wod:Class"
+  }
+}
+
+// and then the instance using the type property
+{
+  "@id" : "people:gra",
+  "@refs" : {
+    "wod:type" : "schema:Person"
+  }
+}
+```
+
+#### The subClassOf Property
+
+The other pattern we want to support is the abilty to define a class hierarchy. 
+
+``` json
+// we create a new base class
+{
+  "@id" : "schema:Thing",
+  "@refs" : {
+    "wod:type" : "wod:Class"
+  }
+}
+
+{
+  "@id" : "schema:Person",
+  "@refs" : {
+    "wod:type" : "wod:Class",
+    // and use the subClassOf property indicate the super class of this class
+    "wod:subClassOf" : "schema:Thing"
+  }
+}
+
+// and then the instance using the type property
+{
+  "@id" : "people:gra",
+  "@refs" : {
+    "wod:type" : "schema:Person"
+  }
+}
+```
+
+#### The Property Class
+
+In the same way that it is useful to be able to indicate which entities are classes it is also useful to indicate which entities are used as property types. The following example shows the intended usage.
+
+``` json
+// the age property type can be defined as follows
+{
+  "@id" : "schema:age",
+  "@refs" : {
+    "wod:type" : "wod:PropertyClass"
+  }
+}
+```
+
+#### Entailments
+
+Entailments just means `things that follow given something else`. So in terms of the WoD data model there are some inferred properties based on using the above built in properties.
+
+The following entailment MUST be respected:
+
+- wod:subClassOf is Transitive. This means that if `a wod:type B` and `B wod:subClassOf C`, then `a wod:type C` is true.
+
 
 ## Conformance
 
